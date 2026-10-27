@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-27T23:33:39+08:00",
-  "git_commit": "26cfa20355e6fb3d807040796c97dafb7502882a",
-  "git_dirty": true,
+  "generated_at": "2026-10-27T23:33:43+08:00",
+  "git_commit": "cc14f167f91bbea21dc6628d6b467fe5cfd785d6",
+  "git_dirty": false,
   "source_hash": "sha256:44a0a71d95ca0137368072c4e86a5c0fd7985e498dce788c2078f88577739925",
   "artifacts": {
     "backend_exe": {
