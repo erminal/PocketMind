@@ -19,7 +19,6 @@ function Resolve-ElectronRoot {
         return (Split-Path -Parent (Resolve-Path $env:ELECTRON_PATH).Path)
     }
     $candidates = @(
-        (Join-Path $env:USERPROFILE ".dsh\electron"),
         (Join-Path $PSScriptRoot "node_modules\electron\dist"),
         (Join-Path $project "node_modules\electron\dist")
     )

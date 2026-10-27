@@ -156,13 +156,31 @@ class ChatEngine:
                 self.db.execute("UPDATE conversations SET title=? WHERE id=?", (content[:24], conversation_id))
         return mid
 
-    def recent_messages(self, conversation_id: str, limit: int | None = None) -> list[dict[str, str]]:
-        limit = limit or self.settings.scoring.recent_messages
+    def recent_messages(
+        self,
+        conversation_id: str,
+        limit: int | None = None,
+        window_hours: int | None = None,
+    ) -> list[dict[str, str]]:
+        limit = max(1, int(limit or self.settings.scoring.recent_messages))
+        window = max(0, int(window_hours or 0))
+        # 时间窗存在时多查一些候选，再由时间过滤；字符预算会在后面再裁。
+        fetch_limit = max(limit, 500) if window else limit
         rows = self.db.fetchall(
-            "SELECT role,content FROM messages WHERE conversation_id=? ORDER BY created_at DESC LIMIT ?",
-            (conversation_id, limit),
+            "SELECT role,content,created_at FROM messages WHERE conversation_id=? ORDER BY created_at DESC LIMIT ?",
+            (conversation_id, fetch_limit),
         )
-        return [{"role": r["role"], "content": r["content"]} for r in reversed(rows)]
+        cutoff = datetime.now().astimezone() - timedelta(hours=window) if window else None
+        kept: list[dict[str, str]] = []
+        for row in rows:
+            if cutoff is not None:
+                ts = self._parse_time(str(row["created_at"] or ""))
+                if ts is None or ts < cutoff:
+                    continue
+            kept.append({"role": row["role"], "content": row["content"]})
+            if len(kept) >= limit:
+                break
+        return list(reversed(kept))
 
     # ------------------------------------------------------------------
     # 主流程
@@ -326,7 +344,11 @@ class ChatEngine:
         }
         messages = [{"role": "system", "content": system_prompt}]
         recent_raw = [
-            msg for msg in self.recent_messages(cid, self.settings.scoring.recent_messages)
+            msg for msg in self.recent_messages(
+                cid,
+                self.settings.scoring.recent_messages,
+                self.settings.scoring.recent_window_hours,
+            )
             if msg["role"] in {"user", "assistant"}
         ]
         recent_messages, recent_meta = trim_recent_messages(
@@ -348,6 +370,8 @@ class ChatEngine:
         context_meta = {
             **system_meta,
             **recent_meta,
+            "recent_window_hours": self.settings.scoring.recent_window_hours,
+            "recent_message_limit": self.settings.scoring.recent_messages,
             "recent_chars": recent_chars,
             "total_chars": system_meta["system_chars"] + recent_chars,
             "estimated_tokens": system_meta["system_estimated_tokens"] + sum(

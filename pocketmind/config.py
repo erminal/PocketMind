@@ -121,10 +121,13 @@ class ScoringConfig:
     recall_half_life_max: float = 3650.0
 
     # ---- 注入预算（字符数，中文场景近似 token*1.5）----
-    context_budget_chars: int = 2400
+    # 模型上下文窗口远大于当前用量；这里限制的是“每轮注入多少”，不是模型容量。
+    context_budget_chars: int = 4000
     context_safety_tail_chars: int = 900
-    recent_messages: int = 10
-    recent_context_budget_chars: int = 2000
+    recent_messages: int = 200
+    recent_context_budget_chars: int = 8000
+    # 最近消息时间窗（小时）；0=不按时间过滤。72=最近3天，避免无限回传旧聊天。
+    recent_window_hours: int = 72
 
     @classmethod
     def load(cls, path: Path | None = None) -> ScoringConfig:
@@ -282,6 +285,13 @@ class Settings:
                 pass
         scoring = data.get("scoring") or {}
         if scoring:
+            # 旧版设置只写过 context_budget_chars=2400 / recent_messages=10，
+            # 且没有时间窗字段。用户升级后应使用新的“最近 3 天”预算；
+            # 只在值仍是旧默认值时迁移，保留用户自己改过的值。
+            if "recent_window_hours" not in scoring and scoring.get("context_budget_chars") == 2400:
+                scoring.pop("context_budget_chars", None)
+            if "recent_context_budget_chars" not in scoring and scoring.get("recent_messages") == 10:
+                scoring.pop("recent_messages", None)
             valid = {f.name for f in fields(ScoringConfig)}
             for key, value in scoring.items():
                 if key in valid and value is not None:

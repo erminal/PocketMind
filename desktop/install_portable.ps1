@@ -11,7 +11,7 @@ if (-not (Test-Path (Join-Path $src "PocketMind.exe"))) {
 }
 
 $target = Join-Path $env:LOCALAPPDATA "PocketMind"
-# 只结束后端/壳自身，不碰 DSH 的 Electron。
+# 只结束后端/壳自身，不碰其他 Electron 程序。
 Get-Process PocketMind -ErrorAction SilentlyContinue | Where-Object { $_.Path -like "$target*" } | Stop-Process -Force -ErrorAction SilentlyContinue
 Start-Sleep -Milliseconds 400
 

@@ -14,7 +14,7 @@ Write-Host "  program: $target"
 Write-Host "  data:    $userData"
 Write-Host "  backup:  $backup"
 
-# 1) 只停止安装目录里的 PocketMind，不碰旧 Web 版/DSH。
+# 1) 只停止安装目录里的 PocketMind，不碰旧 Web 版或其他 Electron 程序。
 Get-Process PocketMind -ErrorAction SilentlyContinue |
     Where-Object { $_.Path -like "$target*" } |
     Stop-Process -Force -ErrorAction SilentlyContinue

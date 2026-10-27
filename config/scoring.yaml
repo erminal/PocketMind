@@ -94,7 +94,8 @@ recall_half_life_gain: 0.01
 recall_half_life_max: 3650.0
 
 # ---- 注入 ----
-context_budget_chars: 2400
+context_budget_chars: 4000
 context_safety_tail_chars: 900
-recent_messages: 10
-recent_context_budget_chars: 2000
+recent_messages: 200
+recent_context_budget_chars: 8000
+recent_window_hours: 72
