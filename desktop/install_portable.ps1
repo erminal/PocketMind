@@ -16,21 +16,11 @@ Get-Process PocketMind -ErrorAction SilentlyContinue | Where-Object { $_.Path -l
 Start-Sleep -Milliseconds 400
 
 if (-not (Test-Path $target)) { New-Item -ItemType Directory -Path $target -Force | Out-Null }
-# 应用运行时用 ADATA 下的用户数据；这里整体替换的是程序文件，不会覆盖 %APPDATA%\PocketMind\data。
-# 先备份旧程序目录里的 backend seed data，避免误删（用户数据不应放这里）。
-$oldSeed = Join-Path $target "resources\backend\data"
-$seedBackup = $null
-if (Test-Path $oldSeed) {
-    $seedBackup = Join-Path $env:TEMP ("pocketmind-seed-" + [guid]::NewGuid().ToString("N"))
-    Copy-Item $oldSeed $seedBackup -Recurse -Force
-}
+# 应用运行时用 APPDATA 下的用户数据；这里只替换程序文件，不覆盖 %APPDATA%\PocketMind\data。
+# 不再把旧程序目录里的 backend/data 复制回来：发布包默认无数据，避免开发数据混入。
 Remove-Item $target -Recurse -Force -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Path $target -Force | Out-Null
 Copy-Item -Path (Join-Path $src "*") -Destination $target -Recurse -Force
-if ($seedBackup -and -not (Test-Path (Join-Path $target "resources\backend\data"))) {
-    Copy-Item $seedBackup (Join-Path $target "resources\backend\data") -Recurse -Force
-}
-if ($seedBackup) { Remove-Item $seedBackup -Recurse -Force -ErrorAction SilentlyContinue }
 
 $exe = Join-Path $target "PocketMind.exe"
 $icon = Join-Path $target "resources\app\assets\icon.ico"
