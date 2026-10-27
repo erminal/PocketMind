@@ -4,7 +4,7 @@
 #   1. 本文件只列 M1 需要的「顶层依赖」，版本为 2026-10-24 在项目内 .venv 实际验证通过的版本。
 #   2. 不包含 torch / transformers / 本地模型权重：M1 只走云端 API 模式。
 #   3. 安装方式（在项目根目录执行，venv 与缓存都留在项目内）：
-#        $env:UV_CACHE_DIR = "D:\DSH\WORK\code-projects\PocketMind\.uv-cache"
+#        $env:UV_CACHE_DIR = ".uv-cache"
 #        uv venv .venv --python 3.12
 #        uv pip install --python .\.venv\Scripts\python.exe -r requirements.txt
 #   4. 本 venv 由 uv 管理、未预装 pip；请统一用 `uv pip` 操作，不要 `python -m pip`。
