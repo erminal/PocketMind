@@ -1,0 +1,53 @@
+# PocketMind · 最小项目配置（M1）
+# 仅用于声明依赖与工具参数；不引入构建系统，避免误把项目当包发布。
+
+[project]
+name = "pocketmind"
+version = "0.1.0"
+description = "PocketMind — 本地优先的 AI 记忆助手（M1 环境，API 模式）"
+requires-python = ">=3.12"
+dependencies = [
+    # HTTP / LLM
+    "openai>=3.37.0",
+    "httpx>=0.28.1",
+    "tenacity>=9.2.1",
+    # 数据 / 校验
+    "pydantic>=2.14.1",
+    "pydantic-settings>=2.16.1",
+    "python-dotenv>=1.2.4",
+    "orjson>=3.13.0",
+    "jsonschema>=4.26.0",
+    "pyyaml>=6.0.3",
+    # 计算
+    "numpy>=2.5.4",
+    # CLI / 展示
+    "typer>=0.27.3",
+    "rich>=15.0.0",
+    # Web（M1 本地实验台）
+    "fastapi>=0.162.0",
+    "uvicorn[standard]>=0.54.0",
+    "jinja2>=3.1.6",
+    "python-multipart>=0.0.32",
+    "websockets>=17.3",
+    # 文本 / 图片
+    "jieba>=0.42.1",
+    "pillow>=13.0.0",
+    "tiktoken>=0.14.0",
+    # 测试 / 质量
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+    "pytest-cov>=7.1.0",
+    "ruff>=0.17.2",
+    "mypy>=2.4.0",
+]
+
+[tool.ruff]
+line-length = 100
+# M1 中大量「失败自动降级」是刻意设计（API/嵌入/日记失败不阻塞对话），
+# 因此允许捕获宽异常；其它规则照常检查。
+[tool.ruff.lint]
+ignore = ["BLE001", "S110", "S112"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"

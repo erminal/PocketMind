@@ -1,0 +1,100 @@
+# PocketMind · M1 打分/检索/遗忘默认参数
+# 改这里即可调实验；代码里不再散落魔法数字。
+# 说明：所有数值都是起点假设，M1 跑完实验后再校准。
+
+# ---- 检索权重（最终排序 = 加权和，建议合计 1.0）----
+w_sem: 0.45
+w_aff: 0.20
+w_imp: 0.15
+w_rec: 0.10
+w_rel: 0.10
+
+# ---- 检索 ----
+recall_limit: 5
+candidate_limit: 30
+vector_min_score: 0.35
+final_min_score: 0.30
+keyvec_dim: 64
+
+# ---- 记忆门（闲聊少查 / 显式线索必查）----
+gate_casual_limit: 1
+gate_normal_limit: 3
+gate_casual_max_len: 12
+gate_explicit_cues:
+  - 记得
+  - 还记得
+  - 上次
+  - 那天
+  - 之前
+  - 以前
+  - 答应
+  - 承诺
+  - 生日
+  - 叫什么
+  - 名字
+  - 住哪
+  - 住在哪
+  - 哪里
+  - 喜欢什么
+  - 喜欢吃什么
+  - 小时候
+  - 第一次
+  - 我们以前
+  - 考试结果
+
+# ---- 去重/冲突 ----
+dedup_threshold: 0.55
+noise_min_len: 4
+noise_max_len: 400
+max_new_per_turn: 8
+
+# ---- 事件打分 ----
+base_score_scale: 10.0
+severity_weights:
+  1: 0.3
+  2: 0.6
+  3: 1.0
+
+# ---- 半衰期（天）----
+half_life_core: 36500.0
+half_life_constraint: 3650.0
+half_life_anchor: 3650.0
+half_life_important_positive: 180.0
+half_life_episodic: 30.0
+half_life_minor_negative: 14.0
+half_life_severe_negative: 90.0
+half_life_low_info: 3.0
+half_life_impression: 3650.0
+impression_floor: 0.20
+
+# ---- 遗忘/降级 ----
+forget_archive_below: 0.05
+forget_gist_below: 0.20
+forget_summary_below: 0.50
+
+# ---- 关系 ----
+favorability_alpha: 0.10
+favorability_event_cap: 3.0
+trust_alpha: 0.02
+
+# ---- 回忆/预期奖励 ----
+recall_k: 0.50
+recall_lambda: 0.20
+recall_tau_minutes: 30.0
+anticipation_p_min: 0.05
+anticipation_p_max: 0.95
+disappointment_penalty: 0.20
+
+# 候选池：最近 N ∪ 高重要度/高情绪/pin
+candidate_recent_limit: 300
+candidate_priority_limit: 100
+
+# 回忆加固：向最大半衰期渐进延长（不无限增长）
+recall_half_life_gain: 0.01
+recall_half_life_max: 3650.0
+
+# ---- 注入 ----
+context_budget_chars: 2400
+context_safety_tail_chars: 900
+recent_messages: 10
+recent_context_budget_chars: 2000

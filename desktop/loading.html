@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>PocketMind</title>
+<style>
+  :root { color-scheme: light dark; --bg:#f6f6f4; --ink:#202124; --muted:#8a8c90; --line:#e4e4e0; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#202124; --ink:#f2f2ef; --muted:#a6a7a3; --line:#35363a; } }
+  * { box-sizing:border-box; }
+  html, body { width:100%; height:100%; margin:0; }
+  body {
+    background:var(--bg); color:var(--ink); overflow:hidden;
+    font-family:"PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+    display:flex; align-items:center; justify-content:center;
+    -webkit-app-region:drag;
+  }
+  .wrap { text-align:center; transform:translateY(-12px); user-select:none; }
+  .mark {
+    width:46px; height:46px; margin:0 auto 16px; border-radius:13px;
+    display:grid; place-items:center; background:#26282b; color:#fff;
+    font-size:11px; font-weight:600; letter-spacing:.06em;
+  }
+  .title { font-size:18px; font-weight:600; letter-spacing:-0.02em; }
+  .sub { margin-top:6px; color:var(--muted); font-size:11px; letter-spacing:.02em; }
+  .bar { width:150px; height:3px; border-radius:99px; background:var(--line); overflow:hidden; margin:22px auto 0; }
+  .bar i { display:block; width:40%; height:100%; border-radius:99px; background:#4d5661; animation:load 1.1s ease-in-out infinite; }
+  @keyframes load { 0%{ transform:translateX(-110%); } 100%{ transform:translateX(360%); } }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="mark">PM</div>
+    <div class="title">PocketMind</div>
+    <div class="sub">正在启动本地后端…</div>
+    <div class="bar"><i></i></div>
+  </div>
+</body>
+</html>

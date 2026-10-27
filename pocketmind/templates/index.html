@@ -1,0 +1,773 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>PocketMind · 小满的本地实验台</title>
+<style>
+  :root { --bg:#f6f3ec; --card:#fffdf8; --line:#e5ddcf; --ink:#2d2a24; --muted:#8a8175; --green:#6b8e6a; --brown:#b98b5e; --red:#b45f5f; --blue:#5f7fa8; }
+  html, body { height:100%; }
+  * { box-sizing:border-box; }
+  body { margin:0; overflow:hidden; font-family:"PingFang SC","Microsoft YaHei",system-ui,sans-serif; background:var(--bg); color:var(--ink); }
+  .app { display:grid; grid-template-columns:280px minmax(420px,1fr) 300px; height:100vh; min-height:0; overflow:hidden; }
+  aside { background:#fbf8f1; min-height:0; height:100vh; overflow-y:auto; overflow-x:hidden; }
+  aside.left { border-right:1px solid var(--line); padding:16px; }
+  aside.right { border-left:1px solid var(--line); padding:16px; }
+  main { display:flex; flex-direction:column; height:100vh; min-height:0; overflow:hidden; }
+  header { flex:0 0 auto; padding:12px 16px; border-bottom:1px solid var(--line); background:rgba(255,253,248,.92); display:flex; justify-content:space-between; align-items:center; gap:8px; }
+  header h1 { font-size:16px; margin:0; }
+  .muted { color:var(--muted); font-size:11px; line-height:1.6; }
+  .badge { display:inline-block; padding:2px 8px; border-radius:99px; background:#e5efe3; color:#3d5c3b; font-size:11px; }
+  .badge.warn { background:#f7eadf; color:#7b4b2a; }
+  .panel { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:12px; margin-top:12px; }
+  .panel h2 { font-size:12px; margin:0 0 8px; color:var(--brown); }
+  .mem { font-size:11px; padding:5px 0; border-bottom:1px dashed var(--line); line-height:1.5; }
+  .mem:last-child { border-bottom:0; }
+  .tag { color:var(--muted); font-size:10px; }
+  #chat { flex:1 1 auto; min-height:0; overflow-y:auto; overscroll-behavior:contain; padding:16px; scrollbar-gutter:stable; }
+  #chat::-webkit-scrollbar { width:9px; }
+  #chat::-webkit-scrollbar-thumb { background:#d9cfbf; border-radius:9px; }
+  .msg { max-width:78%; margin:9px 0; padding:9px 12px; border-radius:13px; line-height:1.65; white-space:pre-wrap; font-size:14px; }
+  .msg.user { margin-left:auto; background:#e8f0e6; border-bottom-right-radius:4px; }
+  .msg.assistant { background:var(--card); border:1px solid var(--line); border-bottom-left-radius:4px; }
+  .meta { font-size:11px; color:var(--muted); margin-top:4px; }
+  .delta { font-size:11px; margin-top:5px; color:var(--green); }
+  .delta.neg { color:var(--red); }
+  form { flex:0 0 auto; display:flex; gap:8px; padding:12px 16px; border-top:1px solid var(--line); background:var(--card); }
+  input[type=text] { flex:1; min-width:0; padding:10px 12px; border:1px solid var(--line); border-radius:11px; font-size:14px; background:#fff; outline:none; }
+  button { padding:9px 14px; border:0; border-radius:10px; background:var(--green); color:#fff; font-size:13px; cursor:pointer; }
+  button.secondary { background:#eef3ea; color:#3d5c3b; }
+  button.brown { background:var(--brown); }
+  button:disabled { opacity:.5; cursor:not-allowed; }
+  .empty { color:var(--muted); font-size:13px; text-align:center; margin-top:40px; }
+  .hint { flex:0 0 auto; font-size:10px; color:var(--muted); padding:0 16px 8px; }
+  a { color:var(--green); text-decoration:none; }
+  .toplinks { display:flex; gap:6px; align-items:center; flex-wrap:wrap; justify-content:flex-end; }
+  .navbtn { padding:7px 11px; border-radius:9px; border:1px solid #dce5d8; background:#eef3ea; color:#3d5c3b; font-size:12px; cursor:pointer; }
+  .navbtn:hover { background:#e2ecdd; }
+  .navbtn.active { background:var(--green); border-color:var(--green); color:#fff; cursor:default; }
+  .navbtn.new { background:var(--brown); border-color:var(--brown); color:#fff; }
+  /* gauge */
+  .gauge-wrap { position:relative; text-align:center; }
+  #gauge { width:100%; max-width:260px; height:auto; display:block; margin:0 auto; }
+  .gauge-val { font-size:26px; font-weight:600; margin-top:-4px; }
+  .gauge-label { font-size:11px; color:var(--muted); }
+  /* vertical bars */
+  .bars { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-top:10px; }
+  .bar { text-align:center; }
+  .bar .track { height:92px; width:18px; margin:0 auto; border-radius:8px; background:#eee7da; position:relative; overflow:hidden; }
+  .bar .fill { position:absolute; bottom:0; width:100%; background:var(--green); border-radius:8px; transition:height .3s; }
+  .bar .fill.mood { background:var(--blue); }
+  .bar .fill.negative { background:var(--red); }
+  .bar .name { font-size:10px; color:var(--muted); margin-top:4px; }
+  .bar .num { font-size:11px; margin-top:1px; }
+  .temp-row { display:flex; justify-content:space-between; font-size:11px; padding:4px 0; border-bottom:1px dashed var(--line); }
+  .temp-row:last-child { border-bottom:0; }
+  .temp-val.pos { color:var(--green); } .temp-val.neg { color:var(--red); }
+  .temp-bar { height:5px; background:#eee7da; border-radius:99px; overflow:hidden; margin-top:3px; }
+  .temp-bar > i { display:block; height:100%; background:var(--green); }
+  .temp-bar > i.neg { background:var(--red); }
+  .energy-track { height:18px; border-radius:99px; background:#eee7da; overflow:hidden; margin-top:4px; }
+  #energy-fill { height:100%; width:100%; background:var(--green); border-radius:99px; transition:width .3s, background .3s; }
+  .energy-line { display:flex; justify-content:space-between; align-items:baseline; margin-top:6px; }
+  .energy-line b { font-size:22px; }
+  .energy-line span { font-size:11px; color:var(--muted); }
+  #unread-info { margin-top:4px; }
+  .camera-video { width:100%; max-height:180px; object-fit:cover; border-radius:10px; margin-top:8px; display:none; background:#05070d; }
+  /* ---- editorial refresh ---- */
+  body { background:#f2efe7; font-family:"PingFang SC","Microsoft YaHei",system-ui,sans-serif; }
+  aside { background:#f7f4ed; }
+  aside.left { padding:22px 18px; }
+  aside.right { padding:20px 16px; }
+  header { background:rgba(250,248,242,.9); backdrop-filter:blur(10px); }
+  header h1 { font-family:"Songti SC","Noto Serif SC",Georgia,serif; font-weight:500; letter-spacing:.02em; font-size:18px; }
+  .panel { background:rgba(253,252,248,.82); border-color:#ded7ca; border-radius:14px; box-shadow:0 1px 0 rgba(255,255,255,.7) inset; }
+  .panel h2 { color:#8b6f4e; letter-spacing:.06em; text-transform:none; font-size:11px; font-weight:600; }
+  .brand { display:flex; gap:11px; align-items:center; margin-bottom:10px; }
+  .brand-mark { width:34px; height:34px; border-radius:50%; display:grid; place-items:center; border:1px solid #bba98f; color:#8b6f4e; font-family:Georgia,serif; font-size:11px; letter-spacing:.08em; background:#fbf8f1; }
+  .brand h1 { font-family:"Songti SC","Noto Serif SC",Georgia,serif; font-weight:500; margin:0; font-size:20px; }
+  .brand .muted { margin-top:2px; }
+  .badges { margin:4px 0 12px; }
+  .badge { background:#ece8dd; color:#6f675a; border:1px solid #e0d8c9; font-weight:500; }
+  .badge.warn { background:#f4e7dc; color:#8a5c38; }
+  .panel-head { display:flex; justify-content:space-between; align-items:center; gap:8px; }
+  .status-dot { width:7px; height:7px; border-radius:50%; background:#c7bfb1; display:inline-block; }
+  .status-dot.live { background:#64836d; box-shadow:0 0 0 3px rgba(100,131,109,.12); }
+  .field-label { display:block; color:#8b8377; font-size:10px; margin:9px 0 4px; }
+  select { width:100%; padding:8px 9px; border:1px solid #ded6c7; border-radius:9px; background:#fdfcf8; color:#2d2a24; font-size:12px; outline:none; }
+  .camera-actions { display:flex; gap:6px; margin-top:8px; flex-wrap:wrap; }
+  .camera-actions button { flex:1; min-width:64px; font-size:11px; padding:7px 8px; }
+  .observe-row { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:10px; }
+  .observe-row .switch-row { margin-top:0; flex:1; }
+  .observe-row button { width:auto; flex:0 0 auto; font-size:11px; padding:6px 9px; }
+  .switch-row { display:flex; align-items:center; gap:8px; margin-top:10px; font-size:11px; color:#6f675a; cursor:pointer; user-select:none; }
+  .switch-row input { position:absolute; opacity:0; pointer-events:none; }
+  .switch-track { width:28px; height:16px; border-radius:99px; background:#d8d1c4; position:relative; transition:.2s; flex:0 0 auto; }
+  .switch-track::after { content:''; position:absolute; width:12px; height:12px; border-radius:50%; background:#fff; top:2px; left:2px; transition:.2s; box-shadow:0 1px 2px rgba(0,0,0,.15); }
+  .switch-row input:checked + .switch-track { background:#6c836e; }
+  .switch-row input:checked + .switch-track::after { transform:translateX(12px); }
+  .switch-row input:disabled + .switch-track { opacity:.45; }
+  .quiet-panel { background:transparent; border-style:dashed; box-shadow:none; }
+  .memory-link { display:inline-block; margin-top:8px; font-size:11px; color:#7d6346; letter-spacing:.02em; }
+  .memory-link:hover { color:#4f4334; }
+  #chat { padding:22px 24px; }
+  .msg { max-width:74%; margin:14px 0; padding:12px 15px; border-radius:14px; box-shadow:0 1px 2px rgba(35,33,29,.03); }
+  .msg.user { background:#e8e4da; border:1px solid #ddd6c8; border-bottom-right-radius:4px; }
+  .msg.assistant { background:#fdfcf8; border:1px solid #e0d9cc; border-bottom-left-radius:4px; }
+  .meta { color:#8a8275; }
+  #chat::-webkit-scrollbar-thumb { background:#cfc6b6; }
+  form { background:rgba(251,249,244,.94); backdrop-filter:blur(10px); padding:14px 24px; }
+  input[type=text] { background:#fdfcf8; border-color:#dcd5c7; border-radius:12px; padding:12px 14px; color:#23211d; }
+  input[type=text]:focus { border-color:#a9b3a7; box-shadow:0 0 0 3px rgba(108,131,110,.10); }
+  button { background:#5e7564; border-radius:10px; letter-spacing:.02em; }
+  button.secondary { background:#efebe1; color:#5c554a; border:1px solid #e2dbcd; }
+  .navbtn { background:transparent; border-color:#ded7ca; color:#71695c; }
+  .navbtn:hover { background:#efebe1; }
+  .navbtn.active { background:#5e7564; border-color:#5e7564; color:#fff; }
+  .navbtn.new { background:#8b6f4e; border-color:#8b6f4e; color:#fff; }
+  .metric-help { margin-top:8px; padding-top:8px; border-top:1px solid #e5ded2; color:#8a8275; font-size:10px; line-height:1.7; }
+  .metric-help b { color:#6f675a; font-weight:500; }
+  #event-info, #context-info { font-variant-numeric:tabular-nums; }
+  .camera-video { background:#0d0f12; border:1px solid #d6cec0; }
+  @media (max-width:1100px){ .brand { margin-top:4px; } }
+  /* ---- minimal ---- */
+  :root { --bg:#f6f6f4; --card:#ffffff; --line:#e4e4e0; --ink:#202124; --muted:#7c7e82; --green:#4d5661; --brown:#5f6368; --red:#9a5b57; --blue:#5b6f86; }
+  body { background:#f6f6f4; color:#202124; }
+  aside, aside.left, aside.right { background:#fafaf8; }
+  aside.left, aside.right { padding:18px 16px; }
+  header { background:rgba(255,255,255,.9); border-bottom-color:#e4e4e0; }
+  header h1 { font-family:"PingFang SC","Microsoft YaHei",system-ui,sans-serif; font-weight:600; font-size:17px; letter-spacing:-.01em; }
+  .brand-mark { border:0; border-radius:8px; background:#202124; color:#fff; font-family:inherit; font-size:10px; font-weight:600; letter-spacing:.04em; }
+  .brand h1 { font-family:inherit; font-weight:600; font-size:18px; letter-spacing:-.02em; }
+  .badges .badge { background:#f1f1ee; color:#6f7276; border-color:#e4e4e0; }
+  .panel { background:#fff; border-color:#e4e4e0; border-radius:10px; box-shadow:none; }
+  .panel h2 { color:#5f6368; font-weight:600; font-size:11px; letter-spacing:.06em; text-transform:uppercase; }
+  .quiet-panel { background:transparent; border-style:solid; }
+  .memory-link { color:#4d5661; }
+  .memory-link:hover { color:#202124; }
+  .status-dot { background:#c9c9c4; }
+  .status-dot.live { background:#4d5661; box-shadow:0 0 0 3px rgba(77,86,97,.10); }
+  select, input[type=text] { background:#fff; border-color:#dededb; border-radius:8px; }
+  input[type=text]:focus { border-color:#8c9198; box-shadow:0 0 0 3px rgba(32,33,36,.06); }
+  button { background:#26282b; border-radius:8px; }
+  button.secondary { background:#f2f2ef; border-color:#e2e2de; color:#4f5257; }
+  .navbtn { background:transparent; border-color:#e1e1dd; color:#5f6368; }
+  .navbtn:hover { background:#f1f1ee; }
+  .navbtn.active { background:#26282b; border-color:#26282b; }
+  .navbtn.new { background:#4d5661; border-color:#4d5661; }
+  #chat { padding:24px; }
+  .msg { border-radius:10px; box-shadow:none; }
+  .msg.user { background:#eef0f1; border-color:#e2e4e5; }
+  .msg.assistant { background:#fff; border-color:#e4e4e0; }
+  form { background:rgba(255,255,255,.94); border-top-color:#e4e4e0; }
+  .hint, .muted { color:#7c7e82; }
+  .metric-help { color:#7c7e82; border-top-color:#ecece8; }
+  .metric-help summary { cursor:pointer; color:#5f6368; font-weight:500; }
+  .metric-help b { color:#4f5257; }
+  .switch-track { background:#d8d8d3; }
+  .switch-row input:checked + .switch-track { background:#4d5661; }
+  .camera-video { border-color:#e4e4e0; background:#0b0c0e; }
+  #chat::-webkit-scrollbar-thumb { background:#d4d4cf; }
+  #arc-bg { stroke:#e9e9e5; }
+  #arc-val { stroke:#4d5661; }
+  #ticks { stroke:#c9c9c4; }
+  #needle { stroke:#202124; }
+  /* Apple-style gauge */
+  #gauge { max-width:280px; overflow:visible; filter:drop-shadow(0 5px 9px rgba(32,33,36,.045)); }
+  .gauge-val { font-size:40px; font-weight:600; letter-spacing:-.05em; margin-top:-9px; color:#202124; font-variant-numeric:tabular-nums; }
+  .gauge-current-label { color:#85878b; font-size:10px; letter-spacing:.08em; margin-top:1px; }
+  .gauge-stats { display:grid; grid-template-columns:1fr 1fr; gap:7px; margin:11px 0 7px; text-align:left; }
+  .gauge-stats .stat { border:1px solid #ecece8; background:#fafaf8; border-radius:10px; padding:7px 9px; min-width:0; }
+  .gauge-stats .stat span { display:block; color:#8a8c90; font-size:9px; letter-spacing:.06em; }
+  .gauge-stats .stat b { display:inline-block; margin-top:2px; color:#303337; font-size:15px; font-weight:600; font-variant-numeric:tabular-nums; }
+  .gauge-stats .stat small { display:block; color:#9a9c9f; font-size:9px; margin-top:1px; }
+  .gauge-stats .stat.temp b { color:#c58b4b; }
+  .gauge-legend { display:flex; justify-content:center; gap:10px; flex-wrap:wrap; color:#8a8c90; font-size:9px; margin-top:2px; }
+  .gauge-legend .key { display:inline-flex; align-items:center; gap:4px; }
+  .gauge-legend .dot, .gauge-stats .dot { width:6px; height:6px; border-radius:50%; display:inline-block; box-shadow:none; vertical-align:middle; }
+  .gauge-legend .dot.base { background:#303337; }
+  .gauge-legend .dot.temp { background:#c58b4b; }
+  .gauge-legend .dot.current { background:#fff; border:1.5px solid #202124; }
+  #base-dot { stroke:none; }
+  #gauge-knob-core { pointer-events:none; }
+  .bar .track, .temp-bar, .energy-track { background:#ececea; }
+  .temp-row, .mem { border-color:#efefec; }
+  .gauge-val { color:#202124; }
+  /* modal */
+  .modal { position:fixed; inset:0; background:rgba(0,0,0,.3); display:none; align-items:center; justify-content:center; padding:20px; z-index:100; }
+  .modal.show { display:flex; }
+  .modal .box { background:#fffdf8; border-radius:14px; padding:18px; max-width:520px; width:100%; line-height:1.7; font-size:13px; }
+  .modal .box h3 { margin:0 0 8px; font-size:16px; }
+  .modal .actions { display:flex; gap:8px; justify-content:flex-end; margin-top:14px; }
+  @media (max-width:1100px){
+    body { overflow:auto; }
+    .app { grid-template-columns:1fr; height:auto; min-height:100vh; overflow:visible; }
+    aside { display:none; }
+    main { height:auto; min-height:100vh; overflow:visible; }
+    #chat { min-height:50vh; overflow:visible; }
+    header { align-items:flex-start; flex-direction:column; }
+    .toplinks { justify-content:flex-start; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="left">
+    <div class="brand">
+      <div class="brand-mark">PM</div>
+      <div><h1 id="persona-name">小满</h1><div class="muted" id="persona-brief"></div></div>
+    </div>
+    <div class="badges"><span class="badge" id="mock-badge">Mock</span> <span class="badge" id="entity-badge"></span></div>
+
+    <div class="panel camera-panel">
+      <div class="panel-head"><h2>摄像头观察</h2><span class="status-dot" id="camera-dot"></span></div>
+      <div class="muted" id="camera-status">摄像头未开启</div>
+      <label class="field-label">摄像头设备</label>
+      <select id="camera-device"><option value="">系统默认</option></select>
+      <video id="camera-video" class="camera-video" muted autoplay playsinline></video>
+      <div class="camera-actions">
+        <button id="camera-start" class="secondary">打开</button>
+        <button id="camera-stop" class="secondary">关闭</button>
+      </div>
+      <div class="observe-row">
+        <label class="switch-row">
+          <input type="checkbox" id="camera-auto" disabled>
+          <span class="switch-track"></span>
+          <span>自动观察 · 40s</span>
+        </label>
+        <button id="capture-now" class="secondary" disabled>手动截取</button>
+      </div>
+      <div class="hint">关闭自动后，用「手动截取」决定她什么时候看。画面不保存、不显示原始描述；评论只进主对话。</div>
+    </div>
+
+    <div class="panel quiet-panel">
+      <h2>记忆与今天</h2>
+      <div id="stats" class="muted">加载中…</div>
+      <a class="memory-link" href="/admin#memory">打开记忆馆 →</a>
+    </div>
+
+    <div class="panel metric-panel">
+      <h2>本轮事件 / 上下文</h2>
+      <div class="muted" id="event-info">发送一条消息后显示。</div>
+      <div class="muted" id="context-info" style="margin-top:6px"></div>
+      <details class="metric-help">
+        <summary>指标说明</summary>
+        <b>效价</b> -1~+1（0 中性） · <b>严重度</b> 1~3 · <b>重要度</b> 0.05~1 · <b>事件分</b>=效价×权重×系数，0 大多表示中性事件，不代表出错。<br>
+        <b>Prompt</b> 是系统提示词占用；<b>近期</b> 是最近聊天占用；<b>tokens</b> 是估算值，不是费用。
+      </details>
+    </div>
+  </aside>
+
+  <main>
+    <header>
+      <div><h1>和她说说话</h1><div class="muted">本地实验台 · 记忆/人格/关系</div></div>
+      <nav class="toplinks" aria-label="页面导航">
+        <button type="button" class="navbtn active" aria-current="page">聊天</button>
+        <button type="button" class="navbtn" onclick="location.href='/space'">星图</button>
+        <button type="button" class="navbtn" onclick="location.href='/admin'">管理台</button>
+        <button type="button" class="navbtn" onclick="location.href='/review'">标注</button>
+        <button id="new-conv" type="button" class="navbtn new">新会话</button>
+      </nav>
+    </header>
+    <div id="chat"><div class="empty" id="empty">说句话试试，比如「我叫小明，我住在杭州，我喜欢吃草莓」。</div></div>
+    <div class="hint" id="hint">本轮好感/心境变化会显示在回复下方；右侧仪表盘会实时更新。</div>
+    <form id="form">
+      <input id="image" type="file" accept="image/png,image/jpeg,image/webp,image/gif" style="display:none" />
+      <button id="pick-image" type="button" class="secondary">图片</button>
+      <input id="input" type="text" placeholder="跟她说点什么…（可附一张图片）" autocomplete="off" />
+      <button id="send" type="submit">发送</button>
+    </form>
+  </main>
+
+  <aside class="right">
+    <div class="panel" style="margin-top:0">
+      <h2>整体好感度</h2>
+      <div class="gauge-wrap" id="gauge-wrap">
+        <svg id="gauge" viewBox="0 0 260 170" role="img" aria-label="好感度仪表：基础值 + 临时段">
+          <path id="arc-track" fill="none" stroke="#ececea" stroke-width="10" stroke-linecap="round"></path>
+          <path id="arc-base" fill="none" stroke="#303337" stroke-width="10" stroke-linecap="round"></path>
+          <path id="arc-temp" fill="none" stroke="#c58b4b" stroke-width="10" stroke-linecap="round"></path>
+          <g id="ticks" stroke="#cfcfca" stroke-width="1"></g>
+          <circle id="base-dot" r="2.6" fill="#303337" style="display:none"></circle>
+          <circle id="gauge-knob" r="6" fill="#ffffff" stroke="#202124" stroke-width="2"></circle>
+          <circle id="gauge-knob-core" r="2" fill="#202124"></circle>
+        </svg>
+        <div class="gauge-val" id="gauge-val">0</div>
+        <div class="gauge-current-label">当前好感度</div>
+        <div class="gauge-stats">
+          <div class="stat"><span>基础值</span><b id="gauge-base">0.00</b></div>
+          <div class="stat temp"><span>临时段 <i class="dot" id="temp-key-dot"></i></span><b id="gauge-temp">0.00</b><small id="temp-direction">无临时值</small></div>
+        </div>
+        <div class="gauge-legend">
+          <span class="key"><i class="dot base"></i>基础</span>
+          <span class="key"><i class="dot temp" id="temp-key-dot-2"></i>临时段（长度=临时值）</span>
+        </div>
+      </div>
+      <div class="hint" style="text-align:center">临时段从基础值末端开始；琥珀=正向临时，蓝灰=负向临时；悬停看详细值。</div>
+    </div>
+    <div class="panel">
+      <h2>关系状态</h2>
+      <div class="bars" id="bars"></div>
+      <div class="muted" id="relation-meta" style="margin-top:8px"></div>
+    </div>
+    <div class="panel">
+      <h2>精力 / 睡眠</h2>
+      <div class="energy-track"><div id="energy-fill"></div></div>
+      <div class="energy-line"><b id="energy-val">100</b><span id="energy-state">醒着</span></div>
+      <div class="muted" id="unread-info">未读 0 条</div>
+      <div class="inline" style="margin-top:8px"><button id="wake-her" class="secondary" style="font-size:11px; display:none">叫醒她</button></div>
+    </div>
+    <div class="panel">
+      <h2>临时状态（会衰减）</h2>
+      <div id="transient"></div>
+      <div class="muted" id="transient-note" style="margin-top:6px">回忆/期待/恐惧只影响当前会话，τ 后回落。</div>
+    </div>
+  </aside>
+</div>
+
+<div class="modal" id="new-modal">
+  <div class="box">
+    <h3>开始新会话？</h3>
+    <p>为避免误点，确认后会先把<strong>当前全部记忆、人格、关系、设置、Prompt、日记与媒体</strong>导出到新的备份文件夹，然后才开始新会话。</p>
+    <p class="muted">记忆不会被删除；新会话只是换一个对话上下文。导出路径会显示在提示里。</p>
+    <div class="actions">
+      <button class="secondary" id="cancel-new">取消</button>
+      <button class="brown" id="confirm-new">确认：导出并新会话</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+let conversationId = null;
+let lastRelationship = null;
+let lastWakeReplyId = '';
+let lastWakeGreetingId = '';
+let lastDashSig = '';
+let composing = false;
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+async function api(path, options) {
+  const res = await fetch(path, Object.assign({headers:{'Content-Type':'application/json'}}, options));
+  if (!res.ok) throw new Error(await res.text());
+  return await res.json();
+}
+function addMessage(role, text, extra, delta) {
+  $('empty')?.remove();
+  const div = document.createElement('div');
+  div.className = 'msg ' + role;
+  div.innerHTML = esc(text) + (extra ? `<div class="meta">${esc(extra)}</div>` : '') + (delta || '');
+  $('chat').appendChild(div);
+  $('chat').scrollTop = $('chat').scrollHeight;
+}
+function deltaHtml(d) {
+  if (!d) return '';
+  const fav = Number(d.favorability || 0), mood = Number(d.mood || 0);
+  const pieces = [];
+  if (Math.abs(fav) >= 0.001) pieces.push(`好感 ${fav > 0 ? '+' : ''}${fav.toFixed(2)}`);
+  if (Math.abs(mood) >= 0.001) pieces.push(`心境 ${mood > 0 ? '+' : ''}${mood.toFixed(2)}`);
+  if (!pieces.length) return '';
+  const cls = fav < 0 || mood < 0 ? 'delta neg' : 'delta';
+  return `<div class="${cls}">本轮 ${pieces.join(' · ')}</div>`;
+}
+function fmtInt(v) { return (v > 0 ? '+' : '') + Number(v).toFixed(2); }
+
+// ---------- gauge ----------
+const G = { cx:130, cy:126, r:84, start:180, end:360 };
+const TEMP_POS = '#c58b4b';
+const TEMP_NEG = '#6b7f94';
+function angle(v) { return G.start + ((Math.max(-100, Math.min(100, v)) + 100) / 200) * 180; }
+function pt(a, r) { const rad = a * Math.PI / 180; return [G.cx + r * Math.cos(rad), G.cy + r * Math.sin(rad)]; }
+function arcPath(v1, v2) {
+  const a1 = angle(v1), a2 = angle(v2);
+  const [x1,y1] = pt(a1, G.r), [x2,y2] = pt(a2, G.r);
+  const large = Math.abs(a2 - a1) > 180 ? 1 : 0;
+  return `M ${x1} ${y1} A ${G.r} ${G.r} 0 ${large} 1 ${x2} ${y2}`;
+}
+function drawGauge(value, base, temp) {
+  const v = Math.max(-100, Math.min(100, Number(value) || 0));
+  const b = Math.max(-100, Math.min(100, Number(base) || 0));
+  $('arc-track').setAttribute('d', arcPath(-100, 100));
+  const baseEl = $('arc-base'), tempEl = $('arc-temp');
+  if (Math.abs(b) > 0.05) {
+    baseEl.setAttribute('d', b >= 0 ? arcPath(0, b) : arcPath(b, 0));
+    baseEl.style.display = '';
+  } else {
+    baseEl.style.display = 'none';
+  }
+  const seg = v - b;
+  const rawTemp = Number(temp) || 0;
+  const tempColor = Math.abs(rawTemp) < .005 ? '#8a8c90' : (rawTemp >= 0 ? TEMP_POS : TEMP_NEG);
+  $('temp-key-dot').style.background = tempColor;
+  $('temp-key-dot-2').style.background = tempColor;
+  if (Math.abs(seg) > 0.05) {
+    tempEl.setAttribute('d', seg >= 0 ? arcPath(b, v) : arcPath(v, b));
+    tempEl.setAttribute('stroke', tempColor);
+    tempEl.style.display = '';
+  } else {
+    tempEl.style.display = 'none';
+  }
+  const [kx, ky] = pt(angle(v), G.r);
+  $('gauge-knob').setAttribute('cx', kx); $('gauge-knob').setAttribute('cy', ky);
+  $('gauge-knob-core').setAttribute('cx', kx); $('gauge-knob-core').setAttribute('cy', ky);
+  const baseDot = $('base-dot');
+  if (Math.abs(Number(temp) || 0) > 0.005) {
+    const [bx, by] = pt(angle(b), G.r);
+    baseDot.setAttribute('cx', bx); baseDot.setAttribute('cy', by);
+    baseDot.style.display = '';
+  } else {
+    baseDot.style.display = 'none';
+  }
+  $('gauge-val').textContent = (v > 0 ? '+' : '') + v.toFixed(1);
+  $('gauge-val').style.color = '#202124';
+  // ticks：只保留关键刻度，避免表盘像旧式仪表
+  const ticks = $('ticks'); ticks.innerHTML = '';
+  for (const t of [-100,-50,0,50,100]) {
+    const aa = angle(t); const [x1,y1] = pt(aa, G.r - 8); const [x2,y2] = pt(aa, G.r + 4);
+    const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+    line.setAttribute('x1',x1); line.setAttribute('y1',y1); line.setAttribute('x2',x2); line.setAttribute('y2',y2);
+    line.setAttribute('stroke-width', t === 0 ? 1.5 : 1);
+    ticks.appendChild(line);
+    if (t === -100 || t === 100) {
+      const [tx,ty] = pt(aa, G.r + 18);
+      const txEl = document.createElementNS('http://www.w3.org/2000/svg','text');
+      txEl.setAttribute('x',tx); txEl.setAttribute('y',ty + 3); txEl.setAttribute('fill','#a2a4a7');
+      txEl.setAttribute('font-size','9'); txEl.setAttribute('text-anchor','middle'); txEl.textContent = t > 0 ? '+'+t : String(t);
+      ticks.appendChild(txEl);
+    }
+  }
+  $('gauge-wrap').title = `好感度：基础 ${b.toFixed(1)}，临时 ${Number(temp||0).toFixed(1)}，当前 ${v.toFixed(1)}；临时段长度=${Math.abs(Number(temp||0)).toFixed(2)} 点`;
+}
+// ---------- bars / transient ----------
+function setGauge(rel, transient) {
+  if (!rel) return;
+  const base = Number(rel.favorability || 0);
+  const temp = Number(transient?.total || 0);
+  const eff = Math.max(-100, Math.min(100, base + temp));
+  const tempColor = Math.abs(temp) < .005 ? '#8a8c90' : (temp >= 0 ? TEMP_POS : TEMP_NEG);
+  drawGauge(eff, base, temp);
+  $('gauge-base').textContent = fmtInt(base);
+  $('gauge-temp').textContent = fmtInt(temp);
+  $('gauge-temp').style.color = tempColor;
+  $('temp-direction').textContent = Math.abs(temp) < .005
+    ? '无临时值'
+    : (temp > 0 ? '正向 · 正在回落' : '负向 · 正在回升');
+  $('gauge-wrap').title = `好感度：基础 ${base.toFixed(1)}，临时 ${temp.toFixed(1)}，当前 ${eff.toFixed(1)}；临时段长度=${Math.abs(temp).toFixed(2)} 点`;
+}
+function renderAgentState(a) {
+  if (!a) return;
+  const energy = Math.max(0, Math.min(100, Number(a.energy || 0)));
+  const fill = $('energy-fill');
+  fill.style.width = energy + '%';
+  fill.style.background = energy <= 20 ? '#b45f5f' : (energy <= 50 ? '#c79a5d' : '#6b8e6a');
+  $('energy-val').textContent = energy.toFixed(0);
+  const sleeping = a.sleep_state === 'sleeping';
+  const processing = a.processing || a.sleep_state === 'processing';
+  const wake = (a.wake_at || '').slice(11, 16);
+  $('energy-state').textContent = processing ? '整理 / 做梦中' : (sleeping ? `睡觉中${wake ? ' · 约 ' + wake + ' 醒' : ''}` : (energy <= 20 ? '已经很困了' : '醒着'));
+  $('unread-info').textContent = `未读 ${a.unread_count || 0} 条${(sleeping || processing) ? ' · 她醒来会看' : ''}`;
+  $('wake-her').style.display = sleeping ? 'inline-block' : 'none';
+}
+function renderBars(rel) {
+  if (!rel) return;
+  const items = [
+    ['信任','trust', rel.trust, 0,1, false],
+    ['亲近','closeness', rel.closeness, 0,1, false],
+    ['边界','boundary_respect', rel.boundary_respect, 0,1, false],
+    ['心境','mood', rel.mood, -1,1, true],
+  ];
+  $('bars').innerHTML = items.map(([name,key,val,min,max,isMood]) => {
+    const pct = Math.max(0, Math.min(1, (val - min) / (max - min))) * 100;
+    return `<div class="bar" title="${name}：${Number(val).toFixed(2)}（范围 ${min}~${max}）">
+      <div class="track"><div class="fill ${isMood ? 'mood' : ''} ${val < (min+max)/2 ? 'negative' : ''}" style="height:${pct}%"></div></div>
+      <div class="name">${name}</div><div class="num">${Number(val).toFixed(2)}</div></div>`;
+  }).join('');
+  $('relation-meta').textContent = `阶段：${rel.stage || 'acquaintance'}（现阶段为静态） · 好感：${Number(rel.favorability).toFixed(1)}`;
+}
+function renderTransient(t) {
+  if (!t) return;
+  const rows = [['回忆奖励','recall'],['期待奖励','anticipation'],['恐惧/落空','fear']];
+  $('transient').innerHTML = rows.map(([name,key]) => {
+    const v = Number(t[key] || 0);
+    const width = Math.min(100, Math.abs(v) * 15);
+    return `<div class="temp-row"><span>${name}</span><span class="temp-val ${v < 0 ? 'neg' : 'pos'}">${fmtInt(v)}</span></div>
+      <div class="temp-bar"><i class="${v < 0 ? 'neg' : ''}" style="width:${width}%"></i></div>`;
+  }).join('') + `<div class="temp-row" style="margin-top:6px"><span>合计（临时）</span><span class="temp-val ${Number(t.total||0) < 0 ? 'neg' : 'pos'}">${fmtInt(t.total || 0)}</span></div>`;
+  $('transient-note').textContent = `τ = ${t.tau_minutes || '?'} 分钟，会持续回落；不写回长期好感基线。`;
+}
+function renderWakeGreeting(g) {
+  if (!g || !g.id || g.id === lastWakeGreetingId) return;
+  lastWakeGreetingId = g.id;
+  addMessage('assistant', g.reply, `醒来后先发的消息 · 睡了约 ${g.sleep_hours} 小时`);
+}
+function renderWakeReply(w) {
+  if (!w || !w.id || w.id === lastWakeReplyId) return;
+  lastWakeReplyId = w.id;
+  addMessage('assistant', w.reply, '醒来后补回（你睡觉时发的消息）');
+}
+let cameraStream = null, cameraTimer = null, cameraBusy = false, lastFrameData = null, cameraAuto = false;
+function cameraStatus(text) { $('camera-status').textContent = text; }
+function cameraDot(live) { $('camera-dot').classList.toggle('live', !!live); }
+function updateCameraButtons() {
+  const on = !!cameraStream;
+  $('camera-auto').disabled = !on;
+  $('capture-now').disabled = !on || cameraAuto;
+  $('camera-start').disabled = on;
+  $('camera-stop').disabled = !on;
+}
+async function refreshCameraDevices() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
+  try {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const cams = devices.filter(d => d.kind === 'videoinput');
+    const sel = $('camera-device');
+    const current = sel.value;
+    sel.innerHTML = '<option value="">系统默认</option>' +
+      cams.map((d, i) => `<option value="${esc(d.deviceId)}">${esc(d.label || ('摄像头 ' + (i + 1)))}</option>`).join('');
+    if (current && cams.some(d => d.deviceId === current)) sel.value = current;
+  } catch (e) { /* ignore */ }
+}
+async function startCamera() {
+  if (cameraStream) return;
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    cameraStatus('浏览器不支持摄像头（需要 localhost 或 HTTPS）');
+    return;
+  }
+  try {
+    const deviceId = $('camera-device').value;
+    const constraints = { audio: false, video: deviceId ? { deviceId: { exact: deviceId } } : true };
+    cameraStream = await navigator.mediaDevices.getUserMedia(constraints);
+    const video = $('camera-video');
+    video.srcObject = cameraStream;
+    video.style.display = 'block';
+    await video.play().catch(() => {});
+    const track = cameraStream.getVideoTracks()[0];
+    cameraStatus('摄像头已打开 · ' + (track && track.label ? track.label : '系统默认') + ' · 手动/自动观察');
+    cameraDot(true);
+    if (track) {
+      track.addEventListener('ended', () => { cameraStatus('摄像头连接断开 · 请重新打开'); cameraDot(false); });
+      track.addEventListener('mute', () => cameraStatus('摄像头画面中断 · 检查连接/相机屏幕'));
+    }
+    await refreshCameraDevices();
+    updateCameraButtons();
+  } catch (e) {
+    cameraStatus('无法打开摄像头：' + (e.message || e.name || '权限被拒绝'));
+    stopCamera();
+  }
+}
+function stopCamera() {
+  if (cameraTimer) { clearInterval(cameraTimer); cameraTimer = null; }
+  if (cameraStream) { cameraStream.getTracks().forEach(t => t.stop()); cameraStream = null; }
+  const video = $('camera-video');
+  if (video) { video.srcObject = null; video.style.display = 'none'; }
+  lastFrameData = null;
+  cameraAuto = false;
+  $('camera-auto').checked = false;
+  cameraDot(false);
+  updateCameraButtons();
+  cameraStatus('摄像头未开启');
+}
+function setCameraAuto(on) {
+  cameraAuto = on;
+  if (cameraTimer) { clearInterval(cameraTimer); cameraTimer = null; }
+  if (on && cameraStream) {
+    cameraStatus('自动观察已开启 · 每 40 秒检查一次');
+    captureCameraFrame(true);
+    cameraTimer = setInterval(() => captureCameraFrame(false), 40000);
+  } else if (cameraStream) {
+    cameraStatus('自动观察已关闭 · 可手动截取');
+  }
+  updateCameraButtons();
+}
+async function captureCameraFrame(force, forceChat = false) {
+  if (!cameraStream || cameraBusy) return;
+  const video = $('camera-video');
+  if (!video || video.readyState < 2) return;
+  const probe = document.createElement('canvas'); probe.width = 48; probe.height = 36;
+  const pctx = probe.getContext('2d'); pctx.drawImage(video, 0, 0, 48, 36);
+  const data = pctx.getImageData(0, 0, 48, 36).data;
+  let sum = 0, n = 0;
+  for (let i = 0; i < data.length; i += 16) { sum += data[i] + data[i + 1] + data[i + 2]; n += 3; }
+  if (!n || sum / n < 10) {
+    cameraStatus('画面过暗/被遮挡 · 请检查镜头、镜头盖或灯光');
+    return;
+  }
+  if (!force && lastFrameData) {
+    let diff = 0, m = 0;
+    for (let i = 0; i < data.length; i += 16) { diff += Math.abs(data[i] - lastFrameData[i]); m++; }
+    if (!m || diff / m < 8) return;
+  }
+  lastFrameData = data;
+  cameraBusy = true;
+  try {
+    const canvas = document.createElement('canvas'); canvas.width = 320; canvas.height = 240;
+    canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', .82));
+    if (!blob) return;
+    const form = new FormData(); form.append('file', blob, 'camera.jpg');
+    if (conversationId) form.append('conversation_id', conversationId);
+    if (forceChat) form.append('force', '1');
+    const res = await fetch('/api/vision/frame', {method: 'POST', body: form});
+    if (!res.ok) throw new Error(await res.text());
+    const data = await res.json();
+    if (data.message_id) {
+      addMessage('assistant', data.comment, '摄像头观察');
+    }
+    cameraStatus('摄像头已打开 · 最近一次分析 ' + new Date().toLocaleTimeString() + (data.message_id ? ' · 已同步主对话' : ' · 限频，未刷主对话'));
+  } catch (e) {
+    cameraStatus('视觉分析失败：' + e.message);
+  } finally { cameraBusy = false; }
+}
+const VISION_CUES = ['看到','看见','看得到','看看','看一下','看下','你看','镜头','画面','摄像头','这里','面前','手里','手上','桌上','周围','房间','背景','我穿','样子','长什么样','这是我','我拿','你能看','你在干'];
+function visionRelevant(text) { return VISION_CUES.some(c => String(text || '').includes(c)); }
+async function grabCameraBlob() {  if (!cameraStream) return null;
+  const video = $('camera-video');
+  if (!video || video.readyState < 2) return null;
+  const canvas = document.createElement('canvas'); canvas.width = 320; canvas.height = 240;
+  canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+  return await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', .82));
+}
+async function loadDashboard(force) {
+  // 输入框聚焦/中文输入法组合期间不刷新侧栏，避免界面重绘导致光标/候选字闪烁。
+  if (!force && (composing || document.activeElement === $('input'))) return;
+  try {
+    const d = await api('/api/dashboard');
+    const sig = JSON.stringify([d.relationship, d.transient, d.agent_state, d.dream_latest, d.wake_greeting, d.wake_reply, d.stats]);
+    if (!force && sig === lastDashSig) return;
+    lastDashSig = sig;
+    if (d.relationship) { lastRelationship = d.relationship; setGauge(d.relationship, d.transient); renderBars(d.relationship); }
+    if (d.transient) renderTransient(d.transient);
+    if (d.agent_state) renderAgentState(d.agent_state);
+    renderWakeGreeting(d.wake_greeting);
+    renderWakeReply(d.wake_reply);
+    if (d.stats) $('stats').innerHTML = `记忆 ${d.stats.active} 条 · 消息 ${d.stats.messages} 条<br>工作日志 ${d.stats.diary_days} 天 · 印象 ${d.stats.impressions} 条`;
+  } catch (e) { /* ignore polling errors */ }
+}
+// ---------- state/chat ----------
+async function loadState() {
+  const s = await api('/api/state');
+  conversationId = s.conversation_id;
+  $('persona-name').textContent = s.persona.name;
+  $('persona-brief').textContent = s.persona.brief;
+  $('mock-badge').textContent = s.mock ? 'Mock 模式' : '真实 API 模式';
+  $('entity-badge').textContent = '实体 ' + s.entity_id.slice(-6);
+  $('chat').innerHTML = '';
+  if (!s.history.length) $('chat').innerHTML = '<div class="empty" id="empty">说句话试试，比如「我叫小明，我住在杭州，我喜欢吃草莓」。</div>';
+  else s.history.forEach(m => addMessage(m.role === 'assistant' ? 'assistant' : 'user', m.content));
+  if (s.relationship) { setGauge(s.relationship, s.transient); renderBars(s.relationship); }
+  if (s.transient) renderTransient(s.transient);
+  if (s.agent_state) renderAgentState(s.agent_state);
+  // 已由 history 展示过的醒来消息不重复追加；后续新消息由轮询追加
+  lastWakeGreetingId = s.wake_greeting ? s.wake_greeting.id : '';
+  lastWakeReplyId = s.wake_reply ? s.wake_reply.id : '';
+}
+function eventInfo(e) {
+  if (!e) return '发送一条消息后显示。';
+  return `情绪效价 ${Number(e.valence).toFixed(2)} · 严重度 ${e.severity} · 重要度 ${Number(e.importance).toFixed(2)} · 事件分 ${Number(e.base_score).toFixed(2)}`;
+}
+function contextInfo(c) {
+  if (!c) return '';
+  const tail = c.system_truncated ? ' · 中间已截断，安全尾段保留' : '';
+  const recent = c.recent_trimmed ? ' · 近期消息已裁剪' : '';
+  return `Prompt ${c.system_chars}/${c.system_budget} 字 · 近期 ${c.recent_chars}/${c.recent_budget} 字 · 约 ${c.estimated_tokens} tokens${tail}${recent}`;
+}
+$('form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const text = $('input').value.trim();
+  const file = $('image').files[0];
+  if (!text && !file) return;
+  $('input').value = '';
+  addMessage('user', text + (file ? `\n[图片] ${file.name}` : ''));
+  $('send').disabled = true;
+  cameraBusy = !!cameraStream;
+  try {
+    let r;
+    if (file) {
+      const fd = new FormData(); fd.append('file', file); fd.append('text', text); fd.append('conversation_id', conversationId || '');
+      const res = await fetch('/api/chat_image', {method:'POST', body: fd});
+      if (!res.ok) throw new Error(await res.text());
+      r = await res.json(); $('image').value = '';
+    } else if (cameraStream && visionRelevant(text)) {
+      const blob = await grabCameraBlob();
+      if (blob) {
+        const fd = new FormData(); fd.append('file', blob, 'camera.jpg'); fd.append('text', text); fd.append('conversation_id', conversationId || '');
+        const res = await fetch('/api/chat_vision', {method:'POST', body: fd});
+        if (!res.ok) throw new Error(await res.text());
+        r = await res.json();
+      } else {
+        r = await api('/api/chat', {method:'POST', body: JSON.stringify({text, conversation_id: conversationId})});
+      }
+    } else {
+      r = await api('/api/chat', {method:'POST', body: JSON.stringify({text, conversation_id: conversationId})});
+    }
+    conversationId = r.conversation_id;
+    const used = (r.used_memories || []).map(m => m.content).join('；');
+    if (r.wake_greeting) renderWakeGreeting(r.wake_greeting);
+    addMessage('assistant', r.reply, used ? '想起：' + used : '', deltaHtml(r.relationship_delta));
+    if (r.relationship_after) { setGauge(r.relationship_after, r.transient); renderBars(r.relationship_after); }
+    if (r.transient) renderTransient(r.transient);
+    if (r.energy !== undefined || r.sleep_state) renderAgentState({energy:r.energy, sleep_state:r.sleep_state, sleeping:r.sleeping, unread_count:r.unread_count});
+    $('event-info').textContent = eventInfo(r.event_scores);
+    $('context-info').textContent = contextInfo(r.context_meta);
+    await loadState(); // refresh memory/diary list; keeps conversation
+  } catch (err) {
+    addMessage('assistant', '出错了：' + err.message);
+  } finally { cameraBusy = false; $('send').disabled = false; $('input').focus(); }
+});
+$('input').addEventListener('compositionstart', () => { composing = true; });
+$('input').addEventListener('compositionend', () => { composing = false; });
+$('pick-image').addEventListener('click', () => $('image').click());
+$('camera-start').addEventListener('click', startCamera);
+$('camera-stop').addEventListener('click', stopCamera);
+$('camera-auto').addEventListener('change', (e) => setCameraAuto(e.target.checked));
+$('capture-now').addEventListener('click', () => captureCameraFrame(true, true));
+$('camera-device').addEventListener('change', async () => {
+  if (!cameraStream) return;
+  stopCamera();
+  await startCamera();
+});
+if (navigator.mediaDevices && navigator.mediaDevices.addEventListener) {
+  navigator.mediaDevices.addEventListener('devicechange', refreshCameraDevices);
+}
+refreshCameraDevices();
+updateCameraButtons();
+window.addEventListener('beforeunload', stopCamera);
+$('wake-her').addEventListener('click', async () => {
+  $('wake-her').disabled = true;
+  try {
+    const r = await api('/api/wake', {method:'POST', body:'{}'});
+    if (!r.ok) throw new Error(r.error || '叫醒失败');
+    await loadState();
+    await loadDashboard();
+  } catch (e) { alert('叫醒失败：' + e.message); }
+  finally { $('wake-her').disabled = false; }
+});
+$('del-diary')?.addEventListener('click', async () => {
+  if (!confirm('删除今天的“她的日记”？工作日志和记忆不会被删除。')) return;
+  try {
+    const r = await api('/api/diary/delete', {method:'POST', body: JSON.stringify({})});
+    if (!r.ok) throw new Error(r.error || '删除失败');
+    alert('已删除今天的日记。');
+  } catch (e) { alert('删除失败：' + e.message); }
+});
+// new conversation guard
+$('new-conv').addEventListener('click', () => $('new-modal').classList.add('show'));
+$('cancel-new').addEventListener('click', () => $('new-modal').classList.remove('show'));
+$('confirm-new').addEventListener('click', async () => {
+  $('confirm-new').disabled = true;
+  try {
+    const exp = await api('/api/export', {method:'POST', body: '{}'});
+    const r = await api('/api/new_conversation', {method:'POST', body: '{}'});
+    conversationId = r.conversation_id;
+    $('new-modal').classList.remove('show');
+    $('hint').textContent = '已导出到：' + exp.path + '；新会话已开始。';
+    await loadState();
+  } catch (e) {
+    $('hint').textContent = '新会话失败（未创建）：' + e.message;
+  } finally { $('confirm-new').disabled = false; }
+});
+// initial
+loadState().then(() => loadDashboard(true)).catch(e => { $('hint').textContent = '加载失败：' + e.message; });
+setInterval(() => loadDashboard(false), 4000);
+</script>
+</body>
+</html>

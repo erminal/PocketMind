@@ -1,0 +1,17 @@
+# PocketMind · M1 扩展开发依赖（在 requirements.txt 之上追加）
+# 安装：
+#   $env:UV_CACHE_DIR = "D:\DSH\WORK\code-projects\PocketMind\.uv-cache"
+#   uv pip install --python .\.venv\Scripts\python.exe -r requirements-dev.txt
+-r requirements.txt
+
+pytest-benchmark==5.3.0
+pytest-timeout==2.4.0
+hypothesis==6.170.9
+freezegun==1.5.5
+respx==0.23.1
+matplotlib==3.11.2
+pandas==3.1.0
+tabulate==0.10.0
+ipython==9.17.1
+pre-commit==4.7.0
+pyinstaller==6.22.3

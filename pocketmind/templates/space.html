@@ -1,0 +1,552 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>PocketMind · 记忆星图</title>
+<style>
+  :root { --bg:#040711; --panel:rgba(13,20,38,.82); --line:rgba(126,156,220,.18); --ink:#e8eefc; --muted:#8090b4; --accent:#8fb7ff; --warm:#ffd38a; }
+  * { box-sizing:border-box; }
+  html, body { height:100%; }
+  body { margin:0; overflow:hidden; color:var(--ink); font-family:"PingFang SC","Microsoft YaHei",system-ui,sans-serif; background:radial-gradient(ellipse at 55% 42%, #101a34 0, #060a16 55%, #03050b 100%); }
+  header { height:62px; display:flex; align-items:center; justify-content:space-between; gap:14px; padding:0 20px; border-bottom:1px solid var(--line); background:rgba(5,9,18,.82); backdrop-filter:blur(14px); }
+  h1 { margin:0; font-size:17px; letter-spacing:.02em; }
+  .sub { color:var(--muted); font-size:11px; margin-top:3px; }
+  .hud { display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
+  .navbtn { width:auto; display:inline-block; padding:7px 11px; border-radius:9px; border:1px solid rgba(140,170,235,.22); background:rgba(112,150,235,.10); color:#bcd2ff; cursor:pointer; font-size:12px; }
+  .navbtn:hover { background:rgba(112,150,235,.20); }
+  .layout { display:grid; grid-template-columns:1fr 340px; height:calc(100vh - 62px); }
+  .stage { position:relative; overflow:hidden; }
+  canvas { width:100%; height:100%; display:block; cursor:grab; }
+  canvas:active { cursor:grabbing; }
+  aside { border-left:1px solid var(--line); background:linear-gradient(180deg, rgba(10,16,31,.92), rgba(5,9,18,.94)); padding:14px; overflow-y:auto; backdrop-filter:blur(14px); }
+  .panel { border:1px solid var(--line); background:var(--panel); border-radius:14px; padding:12px; margin-bottom:12px; box-shadow:0 10px 30px rgba(0,0,0,.18); }
+  .panel h2 { font-size:12px; letter-spacing:.08em; text-transform:uppercase; margin:0 0 8px; color:#9fb8e8; }
+  label { display:block; font-size:11px; color:var(--muted); margin:9px 0 4px; }
+  select, button { width:100%; padding:7px 9px; border:1px solid rgba(130,160,220,.22); border-radius:8px; background:rgba(10,18,36,.9); color:var(--ink); font-size:12px; outline:none; }
+  select:focus { border-color:var(--accent); }
+  button { background:linear-gradient(180deg, rgba(92,142,235,.8), rgba(62,102,190,.85)); border:0; color:#fff; cursor:pointer; margin-top:8px; }
+  button:hover { filter:brightness(1.12); }
+  button.secondary { background:rgba(112,150,235,.12); color:#b9cdf5; border:1px solid rgba(130,160,220,.22); }
+  .row2 { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .row2 button { margin-top:0; }
+  .checks { display:flex; flex-direction:column; gap:6px; margin-top:9px; font-size:12px; color:#b9c4dc; }
+  .checks label { display:flex; gap:7px; align-items:center; margin:0; color:#b9c4dc; cursor:pointer; }
+  .checks input { accent-color:#6d9cff; }
+  .legend { display:flex; flex-wrap:wrap; gap:7px 10px; font-size:11px; color:#9faac6; margin-top:8px; }
+  .dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:5px; box-shadow:0 0 8px currentColor; }
+  #tooltip { position:absolute; pointer-events:none; background:rgba(7,12,24,.94); color:#e8eefc; padding:8px 10px; border:1px solid rgba(140,175,245,.28); border-radius:10px; font-size:11px; line-height:1.55; max-width:340px; display:none; z-index:20; white-space:pre-wrap; box-shadow:0 12px 30px rgba(0,0,0,.35); }
+  #detail { font-size:12px; line-height:1.7; color:#c5d2eb; white-space:pre-wrap; max-height:240px; overflow:auto; }
+  .meta { font-size:11px; color:var(--muted); line-height:1.65; }
+  .hint { font-size:10px; color:#697896; line-height:1.6; margin-top:8px; }
+  .empty { position:absolute; inset:0; display:none; align-items:center; justify-content:center; color:#90a2c4; font-size:13px; text-align:center; padding:24px; }
+  .stage-title { position:absolute; left:20px; top:18px; z-index:3; font-size:12px; color:#8fa8d4; letter-spacing:.08em; text-shadow:0 0 18px rgba(100,150,255,.45); pointer-events:none; }
+  .stage-title b { color:#e8eefc; font-weight:500; }
+  .stage-foot { position:absolute; left:20px; bottom:15px; z-index:3; font-size:10px; color:#65718d; pointer-events:none; }
+  #meta { color:#9db2d8; font-size:11px; }
+  @media (max-width:900px){ .layout{grid-template-columns:1fr; height:auto} aside{order:-1; max-height:48vh} .stage{height:58vh} body{overflow:auto} }
+</style>
+</head>
+<body>
+<header>
+  <div><h1>记忆星图 <span class="sub">PCA 投影 · 深空渲染</span></h1><div class="sub" id="meta">加载中…</div></div>
+  <div class="hud">
+    <span class="sub" id="meta2"></span>
+    <button type="button" class="navbtn" onclick="location.href='/'">← 回到聊天</button>
+    <button type="button" class="navbtn" onclick="location.href='/admin'">管理台</button>
+  </div>
+</header>
+<div class="layout">
+  <div class="stage" id="stage">
+    <canvas id="canvas"></canvas>
+    <div class="stage-title"><b>MEMORY CONSTELLATION</b> · 记忆星图</div>
+    <div class="stage-foot">拖动旋转 · 滚轮缩放 · 悬停查看 · 点击选中</div>
+    <div id="tooltip"></div>
+    <div class="empty" id="empty"></div>
+  </div>
+  <aside>
+    <div class="panel">
+      <h2>显示</h2>
+      <label>颜色</label>
+      <select id="colorMode">
+        <option value="category">分类</option>
+        <option value="valence">情绪效价（蓝负 / 红正）</option>
+        <option value="importance">重要度（冷 → 暖）</option>
+      </select>
+      <label>大小</label>
+      <select id="sizeMode">
+        <option value="importance">重要度</option>
+        <option value="half_life">半衰期</option>
+        <option value="constant">一样大</option>
+      </select>
+      <label>维度</label>
+      <select id="dims"><option value="3">3D 星空</option><option value="2">2D 星空</option></select>
+      <label>分类筛选</label>
+      <select id="categoryFilter"><option value="">全部</option></select>
+      <div class="checks">
+        <label><input type="checkbox" id="showEdges" checked> 显示记忆连线</label>
+        <label><input type="checkbox" id="showLabels" checked> 显示高亮标签</label>
+        <label><input type="checkbox" id="pinnedOnly"> 只看 pin 记忆</label>
+        <label><input type="checkbox" id="grounded" checked> 落地视角（地面/竖轴）</label>
+        <label><input type="checkbox" id="showAxes" checked> 显示主坐标轴</label>
+        <label><input type="checkbox" id="auto" checked> 自动旋转 / 微光呼吸</label>
+      </div>
+      <div class="row2" style="margin-top:10px">
+        <button class="secondary" id="reset">重置视角</button>
+        <button class="secondary" id="refresh">刷新</button>
+      </div>
+      <button class="secondary" id="flat" style="margin-top:8px">切到 2D 平面视角</button>
+    </div>
+    <div class="panel">
+      <h2>图例</h2>
+      <div class="legend" id="legend"></div>
+      <div class="meta" id="variance" style="margin-top:9px"></div>
+    </div>
+    <div class="panel">
+      <h2>选中记忆</h2>
+      <div id="detail" class="meta">点一个星点，查看记忆内容。</div>
+    </div>
+    <div class="panel">
+      <h2>导出 / 说明</h2>
+      <div class="row2">
+        <button class="secondary" id="exportPng">导出 PNG</button>
+        <button class="secondary" id="exportCsv">导出 CSV</button>
+      </div>
+      <button class="secondary" id="fullscreen" style="margin-top:8px">全屏星图</button>
+      <div class="hint" id="note">PCA 只保留前三个主成分；PC1/PC2/PC3 的方向/正负是投影结果，没有天然“上/下”。地面和竖轴是视觉参考系，帮助落地；图上远近仍是近似，不是完整高维距离。</div>
+    </div>
+  </aside>
+</div>
+<script>
+const $ = (id) => document.getElementById(id);
+const canvas = $('canvas');
+const ctx = canvas.getContext('2d');
+const stage = $('stage');
+let DATA = null;
+let yaw = 0.6, pitch = -0.34, zoom = 1;
+let auto = true, dragging = false, last = null, selected = null;
+let grounded = true;
+const GROUND_Y = -1.08;
+let screenPoints = [];
+let starfield = null;
+let dpr = Math.min(2, window.devicePixelRatio || 1);
+let lastPointer = { x: 0, y: 0 };
+const PALETTE = ['#8fb7ff','#ffd38a','#8de0d0','#e2a4d8','#b7e58f','#ff9d9d','#b6a7ff','#88d5ff'];
+const CAT_COLORS = {};
+const CAT_LABELS = {
+  PERSON:'人物', PREFERENCE:'偏好', RELATIONSHIP:'关系', PROJECT:'项目', EVENT:'事件', EVENTS:'事件',
+  PROMISE:'约定', FACT:'事实', FACTS:'事实', EXPERIENCE:'经历', EMOTION:'情绪', SKILL:'技能', PLAN:'计划', OTHER:'其他'
+};
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function catLabel(c) { return CAT_LABELS[c] || c || '未分类'; }
+function catColor(cat) { if (!(cat in CAT_COLORS)) CAT_COLORS[cat] = PALETTE[Object.keys(CAT_COLORS).length % PALETTE.length]; return CAT_COLORS[cat]; }
+function hexRgba(hex, a) {
+  const h = hex.replace('#','');
+  const n = parseInt(h.length === 3 ? h.split('').map(x => x + x).join('') : h, 16);
+  return `rgba(${(n>>16)&255},${(n>>8)&255},${n&255},${a})`;
+}
+function colorFor(p) {
+  const mode = $('colorMode').value;
+  if (mode === 'category') return catColor(p.category);
+  if (mode === 'valence') {
+    const v = Math.max(-1, Math.min(1, Number(p.valence) || 0));
+    if (v < 0) return `rgb(${Math.round(90 - 25*v)},${Math.round(120 + 20*v)},255)`;
+    return `rgb(255,${Math.round(125 - 25*v)},${Math.round(125 - 35*v)})`;
+  }
+  const t = Math.max(0, Math.min(1, Number(p.importance) || 0));
+  return `rgb(${Math.round(105 + 130*t)},${Math.round(125 + 75*t)},${Math.round(205 - 75*t)})`;
+}
+function sizeFor(p) {
+  const mode = $('sizeMode').value;
+  if (mode === 'constant') return 1.7;
+  if (mode === 'half_life') return 1.2 + Math.min(1, Math.log10(Math.max(1, p.half_life_days || 1)) / 5) * 3.4;
+  return 1.2 + (Number(p.importance) || 0) * 4.2;
+}
+function buildStarfield() {
+  const w = canvas.width, h = canvas.height;
+  const bg = document.createElement('canvas');
+  bg.width = w; bg.height = h;
+  const c = bg.getContext('2d');
+  const g = c.createRadialGradient(w*.52, h*.42, 0, w*.52, h*.42, Math.max(w,h)*.8);
+  g.addColorStop(0, '#111d3a'); g.addColorStop(.45, '#080e1e'); g.addColorStop(1, '#02040a');
+  c.fillStyle = g; c.fillRect(0,0,w,h);
+  // nebula
+  const blobs = [
+    [.28,.32,.34,'rgba(67,112,220,.10)'], [.72,.25,.28,'rgba(130,82,200,.08)'],
+    [.62,.72,.40,'rgba(45,140,160,.06)'], [.18,.78,.26,'rgba(180,100,170,.05)'],
+    [.5,.5,.55,'rgba(40,70,140,.05)']
+  ];
+  for (const [x,y,r,col] of blobs) {
+    const ng = c.createRadialGradient(w*x,h*y,0,w*x,h*y,Math.max(w,h)*r);
+    ng.addColorStop(0,col); ng.addColorStop(1,'rgba(0,0,0,0)');
+    c.fillStyle = ng; c.fillRect(0,0,w,h);
+  }
+  // stars
+  for (let i=0;i<Math.min(420, Math.floor(w*h/9000));i++) {
+    const x = Math.random()*w, y = Math.random()*h;
+    const r = .3 + Math.random()*1.5;
+    c.globalAlpha = .18 + Math.random()*.65;
+    c.fillStyle = i % 9 === 0 ? '#9ec4ff' : (i % 17 === 0 ? '#ffdba8' : '#ffffff');
+    c.beginPath(); c.arc(x,y,r,0,Math.PI*2); c.fill();
+  }
+  c.globalAlpha = 1;
+  starfield = bg;
+}
+function resize() {
+  const r = stage.getBoundingClientRect();
+  canvas.width = Math.max(360, Math.floor(r.width * dpr));
+  canvas.height = Math.max(300, Math.floor(r.height * dpr));
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  buildStarfield();
+  draw();
+}
+function project(p) {
+  const dims = Number($('dims').value);
+  let x = p.x, y = p.y, z = dims === 3 ? p.z : 0;
+  const cy = Math.cos(yaw), sy = Math.sin(yaw);
+  const x1 = x*cy - z*sy, z1 = x*sy + z*cy;
+  const cp = Math.cos(pitch), sp = Math.sin(pitch);
+  const y1 = y*cp - z1*sp, z2 = y*sp + z1*cp;
+  const dimsScale = dims === 2 ? 1 : 1;
+  const persp = 1 / (1 + Math.max(-.8, Math.min(.8, z2)) * .28);
+  const r = stage.getBoundingClientRect();
+  const scale = Math.min(r.width, r.height) * .41 * zoom * persp * dimsScale;
+  return { sx: r.width/2 + x1*scale, sy: r.height/2 - y1*scale, depth: z2, persp };
+}
+function projectWorld(x, y, z) { return project({x, y, z}); }
+function frameLine(a, b, color, width = 1) {
+  const p1 = projectWorld(...a), p2 = projectWorld(...b);
+  ctx.strokeStyle = color; ctx.lineWidth = width;
+  ctx.beginPath(); ctx.moveTo(p1.sx, p1.sy); ctx.lineTo(p2.sx, p2.sy); ctx.stroke();
+}
+function frameLabel(text, pos, color) {
+  const p = projectWorld(...pos);
+  ctx.font = '11px "PingFang SC","Microsoft YaHei",sans-serif';
+  const w = ctx.measureText(text).width;
+  ctx.fillStyle = 'rgba(4,8,18,.72)';
+  ctx.fillRect(p.sx + 5, p.sy - 15, w + 8, 16);
+  ctx.fillStyle = color;
+  ctx.fillText(text, p.sx + 9, p.sy - 3);
+}
+function drawGround() {
+  const dims = Number($('dims').value);
+  if (dims !== 3 || !grounded) return;
+  ctx.save();
+  const y = GROUND_Y;
+  const corners = [[-1.55,y,-1.55],[1.55,y,-1.55],[1.55,y,1.55],[-1.55,y,1.55]].map(c => projectWorld(...c));
+  // 地面本体：半透明，让“下面”存在
+  ctx.beginPath();
+  ctx.moveTo(corners[0].sx, corners[0].sy);
+  for (let i = 1; i < corners.length; i++) ctx.lineTo(corners[i].sx, corners[i].sy);
+  ctx.closePath();
+  const g = ctx.createLinearGradient(corners[0].sx, corners[0].sy, corners[2].sx, corners[2].sy);
+  g.addColorStop(0, 'rgba(70,105,170,.12)'); g.addColorStop(1, 'rgba(20,35,65,.04)');
+  ctx.fillStyle = g; ctx.fill();
+  ctx.strokeStyle = 'rgba(130,170,245,.20)'; ctx.lineWidth = 1; ctx.stroke();
+  // 网格：横向/纵深
+  for (let i = -5; i <= 5; i++) {
+    const t = i / 5 * 1.55;
+    const a1 = projectWorld(-1.55,y,t), b1 = projectWorld(1.55,y,t);
+    const a2 = projectWorld(t,y,-1.55), b2 = projectWorld(t,y,1.55);
+    ctx.strokeStyle = i === 0 ? 'rgba(130,180,255,.26)' : 'rgba(110,150,220,.10)';
+    ctx.beginPath(); ctx.moveTo(a1.sx,a1.sy); ctx.lineTo(b1.sx,b1.sy); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(a2.sx,a2.sy); ctx.lineTo(b2.sx,b2.sy); ctx.stroke();
+  }
+  // 地平线 + 方位
+  const h1 = projectWorld(-1.55,y,-1.55), h2 = projectWorld(1.55,y,-1.55);
+  ctx.strokeStyle = 'rgba(190,215,255,.28)'; ctx.lineWidth = 1.2;
+  ctx.beginPath(); ctx.moveTo(h1.sx,h1.sy); ctx.lineTo(h2.sx,h2.sy); ctx.stroke();
+  ctx.restore();
+  ctx.save();
+  frameLabel('PC1 →', [1.42,y,0], 'rgba(160,200,255,.85)');
+  frameLabel('PC3 →', [0,y,1.42], 'rgba(210,165,255,.85)');
+  frameLabel('地面', [-1.35,y,-1.35], 'rgba(130,160,210,.72)');
+  ctx.restore();
+}
+function drawAxes() {
+  if (!DATA || !$('showAxes').checked) return;
+  const dims = Number($('dims').value);
+  ctx.save();
+  if (dims === 2) {
+    ctx.globalAlpha = .75;
+    frameLine([-1.4,0,0],[1.4,0,0], 'rgba(145,185,255,.7)', 1.3);
+    frameLine([0,-1.18,0],[0,1.18,0], 'rgba(160,220,190,.65)', 1.3);
+    frameLabel('PC1 →', [1.32,0,0], 'rgba(170,205,255,.9)');
+    frameLabel('PC2 ↑', [0,1.1,0], 'rgba(175,230,200,.9)');
+    ctx.restore();
+    return;
+  }
+  if (grounded) {
+    ctx.globalAlpha = .8;
+    frameLine([-1.35,0,0],[1.35,0,0], 'rgba(145,185,255,.7)', 1.3);
+    frameLine([0,GROUND_Y,0],[0,1.18,0], 'rgba(160,225,195,.75)', 1.5);
+    frameLine([0,0,-1.35],[0,0,1.35], 'rgba(210,165,255,.65)', 1.2);
+    frameLabel('PC1 横轴', [1.24,0,0], 'rgba(170,205,255,.9)');
+    frameLabel('PC2 上', [0,1.1,0], 'rgba(175,230,200,.9)');
+    frameLabel('PC3 纵深', [0,0,1.24], 'rgba(220,175,255,.9)');
+  } else {
+    ctx.globalAlpha = .75;
+    frameLine([-1.35,0,0],[1.35,0,0], 'rgba(145,185,255,.7)', 1.2);
+    frameLine([0,-1.18,0],[0,1.18,0], 'rgba(160,225,195,.7)', 1.2);
+    frameLine([0,0,-1.35],[0,0,1.35], 'rgba(210,165,255,.6)', 1.2);
+    frameLabel('PC1', [1.24,0,0], 'rgba(170,205,255,.85)');
+    frameLabel('PC2', [0,1.1,0], 'rgba(175,230,200,.85)');
+    frameLabel('PC3', [0,0,1.24], 'rgba(220,175,255,.85)');
+  }
+  ctx.restore();
+}
+function spreadPoints(points) {
+  // PCA 会把相近语义压到中心；这里做轻量 3D 斥力松弛，
+  // 保留大致方位，但把星点拉开，避免记忆变多后挤成一团。
+  const n = points.length;
+  if (n < 2) return points;
+  const arr = points.map(p => ({ ...p, ox: p.x, oy: p.y, oz: p.z }));
+  const target = Math.max(.16, Math.min(.62, 1.55 / Math.sqrt(n)));
+  const iterations = n > 260 ? 14 : 32;
+  for (let iter = 0; iter < iterations; iter++) {
+    for (let i = 0; i < n; i++) {
+      const a = arr[i];
+      for (let j = i + 1; j < n; j++) {
+        const b = arr[j];
+        let dx = a.x - b.x, dy = a.y - b.y, dz = a.z - b.z;
+        const d2 = dx*dx + dy*dy + dz*dz;
+        if (d2 <= 0.000001 || d2 >= target*target) continue;
+        const d = Math.sqrt(d2);
+        const push = ((target - d) / d) * .46;
+        a.x += dx * push; a.y += dy * push; a.z += dz * push;
+        b.x -= dx * push; b.y -= dy * push; b.z -= dz * push;
+      }
+      a.x += (a.ox - a.x) * .01;
+      a.y += (a.oy - a.y) * .01;
+      a.z += (a.oz - a.z) * .01;
+      a.x = Math.max(-1.35, Math.min(1.35, a.x));
+      a.y = Math.max(-1.35, Math.min(1.35, a.y));
+      a.z = Math.max(-1.35, Math.min(1.35, a.z));
+    }
+  }
+  return arr;
+}
+function visiblePoints() {
+  if (!DATA) return [];
+  const f = $('categoryFilter').value;
+  const pin = $('pinnedOnly').checked;
+  return DATA.points.filter(p => (!f || p.category === f) && (!pin || p.pinned));
+}
+function draw() {
+  const r = stage.getBoundingClientRect();
+  ctx.clearRect(0,0,r.width,r.height);
+  if (starfield) ctx.drawImage(starfield, 0, 0, r.width, r.height);
+  const pts = visiblePoints();
+  if (!DATA || !pts.length) {
+    screenPoints = [];
+    $('empty').style.display = 'flex';
+    $('empty').textContent = DATA ? (DATA.note || '还没有带向量的记忆。') : '加载中…';
+    return;
+  }
+  $('empty').style.display = 'none';
+  drawGround();
+  const now = performance.now()/1000;
+  const projected = pts.map(p => ({ ...p, ...project(p) }));
+  const byId = new Map(projected.map(p => [p.i, p]));
+  // constellation edges
+  if ($('showEdges').checked) {
+    for (const e of (DATA.edges || [])) {
+      const a = byId.get(e.a), b = byId.get(e.b);
+      if (!a || !b) continue;
+      const alpha = .055 + Math.max(0, Math.min(1, e.score)) * .12;
+      const grad = ctx.createLinearGradient(a.sx,a.sy,b.sx,b.sy);
+      grad.addColorStop(0, `rgba(120,170,255,${alpha})`);
+      grad.addColorStop(1, `rgba(180,135,255,${alpha})`);
+      ctx.strokeStyle = grad; ctx.lineWidth = .6 + (e.score || 0) * .7;
+      ctx.beginPath(); ctx.moveTo(a.sx,a.sy); ctx.lineTo(b.sx,b.sy); ctx.stroke();
+    }
+  }
+  projected.sort((a,b) => a.depth - b.depth);
+  screenPoints = [];
+  ctx.save();
+  // 不再使用叠加光晕；只用非常微弱的萤火呼吸，主星点保持小而干净。
+  for (const p of projected) {
+    const base = sizeFor(p);
+    const twinkle = auto ? (.84 + .16 * Math.sin(now*1.8 + p.i*1.7)) : 1;
+    const size = Math.max(1.2, base * (selected === p.i ? 1.5 : 1) * twinkle);
+    const col = colorFor(p);
+    // 微弱萤火：范围小、透明度低，不再是 3.4 倍大光晕
+    ctx.globalAlpha = (auto ? (.035 + .025 * (0.5 + 0.5*Math.sin(now*1.2 + p.i))) : .045) * twinkle;
+    ctx.fillStyle = col;
+    ctx.beginPath(); ctx.arc(p.sx, p.sy, size * 2.15, 0, Math.PI*2); ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = col;
+    ctx.beginPath(); ctx.arc(p.sx, p.sy, size, 0, Math.PI*2); ctx.fill();
+    // 很小的核心，避免“灯泡感”
+    ctx.fillStyle = 'rgba(255,255,255,.62)';
+    ctx.beginPath(); ctx.arc(p.sx - size*.18, p.sy - size*.18, Math.max(.55, size*.18),0,Math.PI*2); ctx.fill();
+    if (p.pinned) {
+      ctx.strokeStyle = 'rgba(255,211,138,.75)'; ctx.lineWidth = 1; ctx.globalAlpha = .8;
+      ctx.beginPath(); ctx.arc(p.sx,p.sy,size+3,0,Math.PI*2); ctx.stroke();
+    }
+    screenPoints.push({ i:p.i, sx:p.sx, sy:p.sy, size });
+  }
+  ctx.restore();
+  // labels (only pinned / selected / high importance, avoid clutter)
+  if ($('showLabels').checked) {
+    ctx.save();
+    ctx.font = '11px "PingFang SC","Microsoft YaHei",sans-serif';
+    for (const p of projected) {
+      if (!(p.pinned || selected === p.i || (p.importance || 0) >= .72)) continue;
+      const text = (p.content || p.gist || '').slice(0, 22);
+      if (!text) continue;
+      const w = ctx.measureText(text).width;
+      ctx.fillStyle = 'rgba(4,8,18,.7)';
+      ctx.fillRect(p.sx + 12, p.sy - 17, w + 10, 17);
+      ctx.fillStyle = selected === p.i ? '#ffffff' : 'rgba(205,220,255,.82)';
+      ctx.fillText(text, p.sx + 17, p.sy - 4);
+    }
+    ctx.restore();
+  }
+  // selected ring
+  if (selected !== null) {
+    const p = byId.get(selected);
+    if (p) {
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(p.sx,p.sy,sizeFor(p)+8,0,Math.PI*2); ctx.stroke();
+      ctx.restore();
+    }
+  }
+  drawAxes();
+  if (auto && !dragging) yaw += .0022;
+}
+function hitTest(mx,my) {
+  let best = null, bestD = 20;
+  for (const p of screenPoints) {
+    const d = Math.hypot(p.sx-mx, p.sy-my);
+    if (d < Math.max(bestD, p.size+8)) { bestD = d; best = DATA.points[p.i]; }
+  }
+  return best;
+}
+function legend() {
+  if (!DATA) return;
+  const mode = $('colorMode').value;
+  if (mode === 'category') {
+    const cats = [...new Set(DATA.points.map(p => p.category))];
+    $('legend').innerHTML = cats.map(c => `<span style="color:${catColor(c)}"><span class="dot" style="background:${catColor(c)}"></span>${esc(catLabel(c))}</span>`).join('');
+  } else if (mode === 'valence') {
+    $('legend').innerHTML = '<span style="color:#6f9cff"><span class="dot" style="background:#6f9cff"></span>负面</span><span style="color:#c7d2e8"><span class="dot" style="background:#c7d2e8"></span>中性</span><span style="color:#ff9d9d"><span class="dot" style="background:#ff9d9d"></span>正面</span>';
+  } else {
+    $('legend').innerHTML = '<span style="color:#93a9df">冷：低重要度</span><span style="color:#ffd38a">暖：高重要度</span>';
+  }
+}
+function renderMeta() {
+  if (!DATA) return;
+  $('meta').textContent = `${DATA.count} 个记忆 · ${DATA.method.toUpperCase()} · 解释方差 ${(DATA.variance || []).map(v => (v*100).toFixed(1) + '%').join(' / ')}`;
+  $('meta2').textContent = `PCA · ${DATA.count} 个记忆点 · 深空渲染`;
+  $('variance').textContent = `主成分解释方差：${(DATA.variance || []).map(v => (v*100).toFixed(1) + '%').join('、')}`;
+  $('note').textContent = DATA.note || '';
+  const cats = [...new Set(DATA.points.map(p => p.category))];
+  const sel = $('categoryFilter').value;
+  $('categoryFilter').innerHTML = '<option value="">全部</option>' + cats.map(c => `<option value="${esc(c)}">${esc(catLabel(c))}</option>`).join('');
+  $('categoryFilter').value = sel;
+  legend();
+}
+async function load() {
+  const r = await fetch('/api/viz?status=active&limit=500');
+  DATA = await r.json();
+  DATA.points = spreadPoints(DATA.points || []);
+  renderMeta(); draw();
+}
+function setDetail(p) {
+  selected = p ? p.i : null;
+  $('detail').innerHTML = p
+    ? `<b>${esc(catLabel(p.category))}</b><br>情绪效价：${esc(p.valence)} · 重要度：${esc(p.importance)}<br>半衰期：${esc(p.half_life_days)} 天 · ${p.pinned ? '已固定' : '普通'}<br><br>${esc(p.content || '')}`
+    : '点一个星点，查看记忆内容。';
+  draw();
+}
+canvas.addEventListener('pointerdown', e => { dragging = true; last = {x:e.clientX,y:e.clientY}; canvas.setPointerCapture?.(e.pointerId); });
+window.addEventListener('pointerup', () => dragging = false);
+canvas.addEventListener('pointermove', e => {
+  const rect = stage.getBoundingClientRect();
+  const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+  lastPointer = {x:mx,y:my};
+  if (dragging && last) {
+    yaw += (mx - last.x) * .008;
+    const minPitch = grounded ? -1.15 : -1.35;
+    const maxPitch = grounded ? .28 : 1.35;
+    pitch = Math.max(minPitch, Math.min(maxPitch, pitch + (my - last.y) * .006));
+    last = {x:mx,y:my}; draw();
+  }
+  const p = hitTest(mx,my);
+  const tip = $('tooltip');
+  if (p) {
+    tip.style.display = 'block';
+    tip.style.left = Math.min(mx + 16, rect.width - 300) + 'px';
+    tip.style.top = Math.min(my + 12, rect.height - 120) + 'px';
+    tip.innerHTML = `<b>${esc(catLabel(p.category))}</b> · 重要 ${esc(p.importance)}<br>${esc((p.content || '').slice(0, 220))}`;
+  } else tip.style.display = 'none';
+});
+canvas.addEventListener('pointerleave', () => { $('tooltip').style.display = 'none'; });
+canvas.addEventListener('click', e => {
+  if (dragging) return;
+  const rect = stage.getBoundingClientRect();
+  setDetail(hitTest(e.clientX - rect.left, e.clientY - rect.top));
+});
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  zoom *= e.deltaY > 0 ? .92 : 1.08;
+  zoom = Math.max(.35, Math.min(3.2, zoom)); draw();
+}, { passive:false });
+$('colorMode').addEventListener('change', () => { legend(); draw(); });
+$('sizeMode').addEventListener('change', draw);
+$('dims').addEventListener('change', draw);
+$('categoryFilter').addEventListener('change', () => { if (selected !== null && !visiblePoints().some(p => p.i === selected)) selected = null; draw(); });
+$('pinnedOnly').addEventListener('change', draw);
+$('showEdges').addEventListener('change', draw);
+$('showLabels').addEventListener('change', draw);
+$('showAxes').addEventListener('change', draw);
+$('grounded').addEventListener('change', () => {
+  grounded = $('grounded').checked;
+  if (grounded && pitch > .25) pitch = .2;
+  draw();
+});
+$('auto').addEventListener('change', () => { auto = $('auto').checked; });
+$('refresh').addEventListener('click', load);
+$('reset').addEventListener('click', () => {
+  yaw = .6;
+  pitch = grounded ? -.34 : -.22;
+  zoom = 1;
+  draw();
+});
+$('flat').addEventListener('click', () => {
+  $('dims').value = '2';
+  $('grounded').checked = false;
+  grounded = false;
+  yaw = 0; pitch = -.18; zoom = 1;
+  draw();
+});
+$('exportPng').addEventListener('click', () => {
+  const a = document.createElement('a');
+  a.download = `PocketMind-memory-stars-${new Date().toISOString().slice(0,10)}.png`;
+  a.href = canvas.toDataURL('image/png');
+  a.click();
+});
+$('exportCsv').addEventListener('click', () => {
+  if (!DATA) return;
+  const rows = [['id','category','valence','importance','half_life_days','pinned','x','y','z','content']];
+  for (const p of DATA.points) rows.push([p.id,p.category,p.valence,p.importance,p.half_life_days,p.pinned?1:0,p.x,p.y,p.z,String(p.content||'').replace(/[\r\n]+/g,' ')]);
+  const csv = '\ufeff' + rows.map(r => r.map(x => `"${String(x).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], {type:'text/csv;charset=utf-8'}));
+  a.download = `PocketMind-memory-stars-${new Date().toISOString().slice(0,10)}.csv`;
+  a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+});
+$('fullscreen').addEventListener('click', () => {
+  if (document.fullscreenElement) document.exitFullscreen();
+  else stage.requestFullscreen?.();
+});
+document.addEventListener('fullscreenchange', () => setTimeout(resize, 80));
+window.addEventListener('resize', resize);
+setInterval(draw, 50);
+load().catch(e => { $('empty').style.display='flex'; $('empty').textContent='加载失败：'+e.message; });
+resize();
+</script>
+</body>
+</html>

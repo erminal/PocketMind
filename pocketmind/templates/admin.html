@@ -1,0 +1,868 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>PocketMind · 管理台</title>
+<style>
+  :root { --bg:#f6f3ec; --card:#fffdf8; --line:#e5ddcf; --ink:#2d2a24; --muted:#8a8175; --green:#6b8e6a; --brown:#b98b5e; --red:#b45f5f; --blue:#5f7fa8; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:"PingFang SC","Microsoft YaHei",system-ui,sans-serif; background:var(--bg); color:var(--ink); }
+  .layout { display:grid; grid-template-columns:220px 1fr; min-height:100vh; }
+  aside { background:#fbf8f1; border-right:1px solid var(--line); padding:18px 14px; position:sticky; top:0; height:100vh; overflow:auto; }
+  aside h1 { font-size:17px; margin:0 0 2px; }
+  aside .muted { font-size:11px; line-height:1.6; }
+  .tabs { margin-top:18px; display:flex; flex-direction:column; gap:4px; }
+  .tab { text-align:left; padding:9px 11px; border:0; border-radius:9px; background:transparent; color:#5c564d; cursor:pointer; font-size:13px; }
+  .tab:hover { background:#f0ebe0; }
+  .tab.active { background:#e7efe4; color:#3d5c3b; font-weight:600; }
+  .quick { margin-top:16px; display:flex; flex-direction:column; gap:6px; }
+  .quick a, .quick button { color:var(--green); font-size:12px; text-decoration:none; text-align:left; background:#f4f0e7; border:1px solid #e5ddcf; border-radius:8px; padding:7px 9px; cursor:pointer; }
+  .quick a:hover, .quick button:hover { background:#e9f0e4; border-color:#cfdcc8; }
+  main { padding:22px 26px 50px; max-width:1180px; }
+  .page { display:none; }
+  .page.active { display:block; }
+  .top { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:16px; }
+  .top h2 { margin:0 0 4px; font-size:20px; }
+  .badge { display:inline-block; padding:3px 9px; border-radius:99px; background:#e7efe4; color:#3d5c3b; font-size:11px; }
+  .badge.warn { background:#f7eadf; color:#7b4b2a; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px 18px; margin-bottom:16px; }
+  .card h3 { margin:0 0 4px; font-size:15px; color:var(--brown); }
+  .card .sub { color:var(--muted); font-size:12px; line-height:1.6; margin-bottom:10px; }
+  /* 记忆馆：把聊天侧的“她记得的事/事实/日志/日记/梦”集中到管理台 */
+  .memory-grid { display:grid; grid-template-columns:1.15fr .85fr; gap:16px; align-items:start; }
+  .memory-grid .card { margin-bottom:0; }
+  .memory-toolbar { display:flex; gap:8px; align-items:center; margin-bottom:10px; }
+  .memory-toolbar input { flex:1; }
+  .memory-list { max-height:520px; overflow:auto; border-top:1px solid #eee7da; }
+  .memory-item { padding:11px 2px; border-bottom:1px solid #f0e9dc; }
+  .memory-item:last-child { border-bottom:0; }
+  .memory-content { font-size:13px; line-height:1.7; color:#3a352d; white-space:pre-wrap; }
+  .memory-meta { margin-top:5px; font-size:10px; color:#8a8175; display:flex; gap:10px; flex-wrap:wrap; }
+  .memory-empty { padding:22px 4px; color:#8a8175; font-size:12px; text-align:center; }
+  .dialogue-text { font-size:13px; line-height:1.85; white-space:pre-wrap; color:#3a352d; max-height:300px; overflow:auto; }
+  .memory-hero { display:flex; justify-content:space-between; gap:16px; align-items:flex-end; margin-bottom:16px; }
+  .memory-hero h2 { font-family:"Songti SC",Georgia,serif; font-weight:500; font-size:24px; margin:0 0 4px; }
+  .section-kicker { font-size:10px; letter-spacing:.16em; text-transform:uppercase; color:#9a7a54; margin-bottom:4px; }
+  .pill { display:inline-block; padding:3px 8px; border-radius:99px; background:#f1ece2; color:#6f675a; font-size:10px; border:1px solid #e5ddcf; }
+  @media (max-width:900px){ .memory-grid{grid-template-columns:1fr} }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:14px 18px; }
+  .grid3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px 16px; }
+  @media (max-width:1000px){ .layout{grid-template-columns:1fr} aside{position:static;height:auto} .grid2,.grid3{grid-template-columns:1fr} main{padding:16px} }
+  /* ---- editorial refresh ---- */
+  :root { --bg:#f2efe7; --card:#fdfcf8; --line:#ded7ca; --ink:#24221e; --muted:#7d766b; --green:#5e7564; --brown:#8b6f4e; --red:#a9584f; --blue:#5d718a; }
+  body { background:#f2efe7; }
+  aside { background:#f7f4ed; border-right-color:#ded7ca; }
+  aside h1 { font-family:"Songti SC","Noto Serif SC",Georgia,serif; font-weight:500; letter-spacing:.02em; }
+  .tab { color:#6f675a; border-radius:9px; }
+  .tab:hover { background:#eee9de; }
+  .tab.active { background:#e4e9e1; color:#425b49; }
+  .top h2 { font-family:"Songti SC","Noto Serif SC",Georgia,serif; font-weight:500; font-size:24px; }
+  .card { border-radius:14px; background:rgba(253,252,248,.9); box-shadow:0 1px 0 rgba(255,255,255,.7) inset; }
+  .card h3 { color:#8b6f4e; letter-spacing:.03em; }
+  .top { align-items:flex-end; }
+  button { background:#5e7564; border-radius:9px; }
+  button.secondary { background:#efebe1; color:#5c554a; border:1px solid #e2dbcd; }
+  button.brown { background:#8b6f4e; }
+  .quick a, .quick button { background:transparent; }
+  .badge { background:#ece8dd; color:#6f675a; }
+  .data-tabs button.active { background:#e4e9e1; color:#425b49; }
+  .section-kicker { display:none; }
+  /* ---- minimal ---- */
+  :root { --bg:#f6f6f4; --card:#ffffff; --line:#e4e4e0; --ink:#202124; --muted:#7c7e82; --green:#4d5661; --brown:#5f6368; --red:#9a5b57; --blue:#5b6f86; }
+  body { background:#f6f6f4; color:#202124; }
+  aside { background:#fafaf8; border-right-color:#e4e4e0; }
+  aside h1 { font-family:"PingFang SC","Microsoft YaHei",system-ui,sans-serif; font-weight:600; letter-spacing:-.01em; }
+  .tab { color:#5f6368; border-radius:8px; }
+  .tab:hover { background:#f1f1ee; }
+  .tab.active { background:#ecece9; color:#202124; font-weight:600; }
+  .top { align-items:flex-end; }
+  .top h2 { font-family:inherit; font-weight:600; font-size:22px; letter-spacing:-.02em; }
+  .card { background:#fff; border-color:#e4e4e0; border-radius:10px; box-shadow:none; }
+  .card h3 { color:#4f5257; font-weight:600; letter-spacing:0; text-transform:none; }
+  .badge { background:#f1f1ee; color:#6f7276; border:1px solid #e4e4e0; }
+  button { background:#26282b; border-radius:8px; }
+  button.secondary { background:#f2f2ef; border-color:#e2e2de; color:#4f5257; }
+  button.brown { background:#4d5661; }
+  .quick a, .quick button { background:transparent; border-color:#e4e4e0; color:#5f6368; }
+  .quick a:hover, .quick button:hover { background:#f1f1ee; }
+  .data-tabs button { background:#f3f3f0; color:#5f6368; }
+  .data-tabs button.active { background:#ecece9; color:#202124; }
+  .data-table-wrap { background:#fff; border-color:#e4e4e0; }
+  th { background:#fafaf8; color:#7c7e82; }
+  tbody tr:hover { background:#f8f8f6; }
+  .memory-grid .card { box-shadow:none; }
+  .memory-hero .sub { color:#6f7276; }
+  .memory-toolbar input { border-color:#e2e2de; }
+  .pill { background:#f2f2ef; color:#5f6368; border-color:#e4e4e0; }
+  .data-detail, pre { background:#fafaf8; border-color:#ecece8; }
+  .warnbox { background:#fafaf7; border-color:#e6e1d6; color:#5f574c; }
+  .modal .box { background:#fff; }
+  label.f { display:block; font-size:12px; color:#5d574d; margin-bottom:4px; }
+  label.f .q { display:inline-flex; align-items:center; justify-content:center; width:15px; height:15px; margin-left:4px; border-radius:50%; background:#ece5d7; color:#7b6a50; font-size:10px; cursor:help; position:relative; }
+  .q::after { content:attr(data-tip); position:absolute; left:50%; bottom:130%; transform:translateX(-50%); width:280px; padding:8px 10px; border-radius:8px; background:#3a352d; color:#fff; font-size:11px; line-height:1.5; white-space:normal; display:none; z-index:50; box-shadow:0 8px 24px rgba(0,0,0,.15); }
+  .q:hover::after { display:block; }
+  input[type=text], input[type=password], input[type=number], select, textarea {
+    width:100%; padding:8px 10px; border:1px solid #ded5c5; border-radius:9px; background:#fff; font-size:12px; color:#2d2a24; outline:none;
+  }
+  input:focus, select:focus, textarea:focus { border-color:#9db597; box-shadow:0 0 0 3px #eef3ea; }
+  textarea { min-height:70px; resize:vertical; font-family:ui-monospace,Consolas,monospace; line-height:1.5; }
+  .row { display:flex; gap:8px; align-items:center; }
+  .row > input, .row > select { flex:1; }
+  button { padding:8px 13px; border:0; border-radius:9px; background:var(--green); color:#fff; font-size:12px; cursor:pointer; }
+  button.secondary { background:#eef3ea; color:#3d5c3b; }
+  button.brown { background:var(--brown); }
+  button:disabled { opacity:.5; cursor:not-allowed; }
+  .hint { font-size:11px; color:var(--muted); line-height:1.6; margin-top:6px; }
+  .status { font-size:12px; margin-left:8px; }
+  .ok { color:var(--green); } .err { color:var(--red); }
+  .kv { display:grid; grid-template-columns:150px 1fr; gap:6px 12px; font-size:12px; }
+  .kv .k { color:var(--muted); }
+  pre { background:#f7f4ee; border:1px solid var(--line); border-radius:10px; padding:12px; font-size:11px; line-height:1.55; overflow:auto; max-height:420px; white-space:pre-wrap; }
+  table { width:100%; border-collapse:collapse; font-size:12px; table-layout:auto; min-width:0; }
+  th, td { border-bottom:1px solid #eee7da; padding:10px 9px; text-align:left; vertical-align:top; min-width:0; max-width:360px; white-space:normal; overflow-wrap:anywhere; line-height:1.55; }
+  th { color:#8a8175; font-weight:500; position:sticky; top:0; background:#fbf9f4; z-index:1; font-size:10px; letter-spacing:.06em; text-transform:uppercase; }
+  tbody tr { cursor:pointer; }
+  tbody tr:hover { background:#f8f5ee; }
+  td.cell-content { min-width:260px; max-width:520px; color:#3a352d; }
+  td.cell-small { color:#6f675a; font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .data-table-wrap { overflow:auto; max-height:64vh; border:1px solid #e8e0d2; border-radius:12px; background:#fdfcf8; }
+  .data-table-wrap::-webkit-scrollbar { height:10px; width:10px; }
+  .data-table-wrap::-webkit-scrollbar-thumb { background:#d9cfbf; border-radius:9px; }
+  .modal { position:fixed; inset:0; background:rgba(0,0,0,.28); display:none; align-items:center; justify-content:center; padding:20px; z-index:200; }
+  .modal.show { display:flex; }
+  .modal .box { background:#fffdf8; border-radius:14px; padding:16px; max-width:900px; width:100%; max-height:82vh; overflow:auto; }
+  .modal pre { max-height:60vh; }
+  .data-tabs { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px; }
+  .data-tabs button { background:#f2ede2; color:#5d574d; }
+  .data-tabs button.active { background:#e7efe4; color:#3d5c3b; }
+  .warnbox { background:#fbf3e6; border:1px solid #ead9ba; color:#6d512d; padding:10px 12px; border-radius:10px; font-size:12px; line-height:1.6; }
+  .small { font-size:11px; color:var(--muted); }
+  .divider { height:1px; background:var(--line); margin:14px 0; }
+  .inline { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .modal { position:fixed; inset:0; background:rgba(0,0,0,.25); display:none; align-items:center; justify-content:center; padding:20px; z-index:100; }
+  .modal.show { display:flex; }
+  .modal .box { background:#fffdf8; border-radius:14px; padding:18px; max-width:760px; width:100%; max-height:80vh; overflow:auto; }
+</style>
+</head>
+<body>
+<div class="layout">
+  <aside>
+    <h1>PocketMind</h1>
+    <div class="muted">M1 本地管理台<br><span id="modeBadge" class="badge">加载中…</span></div>
+    <div class="tabs">
+      <button class="tab active" data-page="overview">总览</button>
+      <button class="tab" data-page="memory">记忆馆</button>
+      <button class="tab" data-page="api">API 与模型</button>
+      <button class="tab" data-page="persona">人格与 Prompt</button>
+      <button class="tab" data-page="params">记忆参数</button>
+      <button class="tab" data-page="data">数据浏览</button>
+      <button class="tab" data-page="paths">路径与说明</button>
+    </div>
+    <div class="quick" aria-label="页面导航">
+      <button type="button" onclick="location.href='/'">← 回到聊天</button>
+      <button type="button" onclick="location.href='/space'">记忆星图（向量可视化）</button>
+      <button type="button" onclick="location.href='/review'">人工标注台</button>
+      <button type="button" onclick="window.open('/health','_blank')">服务状态 /health</button>
+    </div>
+  </aside>
+  <main>
+    <div class="top">
+      <div><h2 id="pageTitle">总览</h2><div class="muted" id="pageSub">所有设置保存在本机 data/settings.json；保存后立即生效。</div></div>
+      <div class="inline"><span id="saveStatus" class="status"></span><button id="saveAll" class="brown">保存所有修改</button></div>
+    </div>
+
+    <!-- 总览 -->
+    <section class="page active" id="page-overview">
+      <div class="card">
+        <h3>她现在是谁</h3>
+        <div class="sub">人格与身份基线；修改请去「人格与 Prompt」。</div>
+        <div class="kv" id="overviewPersona"></div>
+      </div>
+      <div class="grid2">
+        <div class="card"><h3>运行状态</h3><div class="kv" id="overviewState"></div></div>
+        <div class="card"><h3>数据量</h3><div class="kv" id="overviewStats"></div></div>
+      </div>
+      <div class="card">
+        <h3>安全与完整性</h3>
+        <div class="sub">API Key 加密状态、代码签名状态、源码/构建哈希。哈希是完整性指纹，不是代码签名。</div>
+        <div class="kv" id="securityBox">加载中…</div>
+      </div>
+      <div class="card">
+        <h3>这个管理台能改什么</h3>
+        <div class="sub">顶部「保存所有修改」会写 data/settings.json 并热重载；人格单独保存。</div>
+        <div class="kv">
+          <div class="k">API / 模型</div><div>供应商、Base URL、模型型号、Key、思考开关、温度/最大 token；可在线拉模型、可测试连通。</div>
+          <div class="k">人格 / Prompt</div><div>姓名、年龄、性别、物种、价值观、性格、边界、知识边界、补充 Prompt；可预览完整系统提示词。</div>
+          <div class="k">记忆参数</div><div>检索权重、记忆门、去重、打分、半衰期、遗忘阈值、关系步长、回忆奖励；每项带问号说明。</div>
+          <div class="k">数据</div><div>记忆/事件/消息/检索日志/关系/印象/日记/内心话/标注/媒体/核心事实；可搜索、导出 CSV。</div>
+        </div>
+      </div>
+      <div class="warnbox">安全提示：API Key 以明文保存在本机 <code>data/settings.json</code>（已被 gitignore）；不要把该文件或截图发给别人。服务只监听 127.0.0.1。</div>
+    </section>
+
+    <!-- API -->
+    <section class="page" id="page-api">
+      <div class="card">
+        <h3>主对话 / 记忆抽取模型</h3>
+        <div class="sub">OpenAI 兼容接口；DeepSeek 默认关闭 thinking（快速档）。改完点右上角保存。</div>
+        <div class="grid2">
+          <div><label class="f">供应商</label><select id="llmProvider"></select></div>
+          <div><label class="f">Base URL <span class="q" data-tip="API 根地址，不带 /chat/completions。DeepSeek 默认 https://api.deepseek.com；其他供应商填其 OpenAI 兼容地址。">?</span></label><input type="text" id="llmBaseUrl" placeholder="https://api.deepseek.com"></div>
+          <div><label class="f">模型型号 <span class="q" data-tip="实际调用的模型 id。可点右侧『拉取模型』从服务商 /models 自动拉取，也可以手填。">?</span></label>
+            <div class="row"><input type="text" id="llmModel" list="llmModels" placeholder="deepseek-flash"><button class="secondary" id="fetchModels">拉取模型</button></div>
+            <datalist id="llmModels"></datalist><div class="hint" id="modelHint"></div>
+          </div>
+          <div><label class="f">思考模式 <span class="q" data-tip="DeepSeek 官方：disabled=关闭思考（快速、延迟低）；enabled=开启深思考。跨模型时该开关可能被忽略。">?</span></label><select id="llmThinking"></select></div>
+          <div><label class="f">温度 temperature <span class="q" data-tip="0=更稳定/保守，1=更发散。聊天建议 0.7~0.9；记忆抽取用 0.1~0.2。">?</span></label><input type="number" id="llmTemperature" min="0" max="2" step="0.05"></div>
+          <div><label class="f">最大输出 token <span class="q" data-tip="单次回复上限；太小会截断，太大增加成本。聊天 200~500，抽取 600~900。">?</span></label><input type="number" id="llmMaxTokens" min="16" max="4096" step="16"></div>
+          <div style="grid-column:1/-1"><label class="f">API Key <span class="q" data-tip="只保存在本机 data/settings.json。留空=不修改当前 Key；勾选『清除』才会清空。">?</span></label>
+            <div class="row"><input type="password" id="llmApiKey" placeholder="已保存（留空不修改）" autocomplete="off"><label class="small"><input type="checkbox" id="llmClearKey"> 清除</label></div>
+            <div class="hint" id="llmKeyHint"></div>
+          </div>
+        </div>
+        <div class="inline" style="margin-top:12px"><button class="secondary" id="testLlm">测试主模型连通</button><span id="llmTestResult" class="status"></span></div>
+      </div>
+
+      <div class="card">
+        <h3>Embedding（向量）模型</h3>
+        <div class="sub">用于语义检索；不填 Key 时自动用关键词兜底（mock 哈希向量）。</div>
+        <div class="grid2">
+          <div><label class="f">供应商</label><select id="embProvider"></select></div>
+          <div><label class="f">Base URL <span class="q" data-tip="OpenAI 兼容 Embedding 地址；DashScope 默认 compatible-mode/v1。">?</span></label><input type="text" id="embBaseUrl"></div>
+          <div><label class="f">模型型号</label><div class="row"><input type="text" id="embModel" list="embModels"><button class="secondary" id="fetchEmbModels">拉取模型</button></div><datalist id="embModels"></datalist></div>
+          <div><label class="f">维度 <span class="q" data-tip="留 0=启动时探测；换模型/维度后旧记忆向量会不兼容，需要重建。">?</span></label><input type="number" id="embDim" min="0" max="8192" step="1"></div>
+          <div style="grid-column:1/-1"><label class="f">API Key</label><div class="row"><input type="password" id="embApiKey" placeholder="已保存（留空不修改）" autocomplete="off"><label class="small"><input type="checkbox" id="embClearKey"> 清除</label></div><div class="hint" id="embKeyHint"></div></div>
+        </div>
+        <div class="inline" style="margin-top:12px"><button class="secondary" id="testEmb">测试 Embedding 连通</button><span id="embTestResult" class="status"></span></div>
+      </div>
+    </section>
+
+    <!-- 人格 -->
+    <section class="page" id="page-persona">
+      <div class="card">
+        <h3>人格身份</h3>
+        <div class="sub">这些字段会直接进系统提示词。年龄是**心智年龄**；开启「生日自动增长」后，每经过一次生日当前展示年龄 +1。性别/物种大改时，建议勾选「另存为新角色」做隔离。</div>
+        <div class="grid3">
+          <div><label class="f">名字</label><input type="text" id="pName"></div>
+          <div><label class="f">心智年龄（岁）<span class="q" data-tip="不是物种的生理年龄，而是她的心智/表达年龄。例如 7 岁=七岁心智，不论物种设定是什么；开启生日追踪后这里填基准年龄。">?</span></label><input type="number" id="pAge" min="0" max="200"></div>
+          <div><label class="f">年龄追踪</label><label class="small"><input type="checkbox" id="pAgeTracking"> 每年生日自动 +1 岁</label><div class="hint" id="pAgeHint"></div></div>
+          <div><label class="f">生日（MM-DD）</label><input type="text" id="pBirthday" placeholder="例如 10-26" maxlength="10"></div>
+          <div><label class="f">性别</label><input type="text" id="pGender"></div>
+          <div><label class="f">物种/身份设定</label><input type="text" id="pSpecies"></div>
+          <div><label class="f">来源 <span class="q" data-tip="origin=created 表示『被创造出来的智能生命』；这是身份基线，不建议改成自然人。">?</span></label><input type="text" id="pOrigin"></div>
+          <div><label class="f">版本</label><input type="text" id="pVersion" disabled></div>
+        </div>
+        <div class="grid2" style="margin-top:12px">
+          <div><label class="f">价值观（用，或、分隔）</label><textarea id="pValues"></textarea></div>
+          <div><label class="f">性格（用，或、分隔）</label><textarea id="pTraits"></textarea></div>
+          <div><label class="f">边界（用，或、分隔）</label><textarea id="pBoundaries"></textarea></div>
+          <div><label class="f">来源故事</label><textarea id="pOriginStory"></textarea></div>
+          <div><label class="f">说话风格（JSON）</label><textarea id="pSpeechStyle" class="mono"></textarea></div>
+          <div><label class="f">知识边界（JSON）</label><textarea id="pKnowledge" class="mono"></textarea></div>
+        </div>
+        <div style="margin-top:12px"><label class="f">补充 Prompt / 表达指令 <span class="q" data-tip="追加在系统提示词最后；适合写『说话再短一点』『不要用某词』等。与身份/边界冲突时以身份/边界为准。">?</span></label><textarea id="pCustom" style="min-height:100px"></textarea></div>
+        <div class="inline" style="margin-top:12px">
+          <label class="small"><input type="checkbox" id="pNewEntity"> 另存为新角色（隔离记忆，旧角色保留）</label>
+          <button id="savePersona" class="brown">保存人格</button><span id="personaStatus" class="status"></span>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Prompt 模板（data/prompt_template.md）</h3>
+        <div class="sub">模板是外部数据，不写死在代码里；保存后下一轮对话生效，<b>不需要重新打包</b>。用 <code>{{name}}</code> 这种双花括号占位符。身份基线/名字是必需项，建议保留。</div>
+        <textarea id="promptTemplate" style="min-height:260px; font-family:ui-monospace,Consolas,monospace;"></textarea>
+        <div class="hint" id="placeholderHelp"></div>
+        <div class="inline" style="margin-top:8px">
+          <button id="savePrompt" class="brown">保存 Prompt 模板</button>
+          <button id="resetPrompt" class="secondary">恢复默认模板</button>
+          <span id="promptStatus" class="status"></span>
+        </div>
+        <div class="hint">模板里没放的占位符，对应内容就不会注入；例如删掉 <code>{{custom_section}}</code>，补充 Prompt 就不会生效。完整说明见右侧占位符。</div>
+      </div>
+      <div class="card">
+        <h3>系统提示词预览</h3>
+        <div class="sub">这是当前模板 + 人格 + 关系 + 核心事实渲染出来的实际提示词（不含本轮检索到的记忆）。</div>
+        <div class="inline"><button class="secondary" id="refreshPrompt">刷新预览</button></div>
+        <pre id="promptPreview">加载中…</pre>
+      </div>
+    </section>
+
+    <!-- 参数 -->
+    <section class="page" id="page-params">
+      <div class="warnbox" style="margin-bottom:14px">参数保存后立即影响**新**对话/新记忆；已有记忆的半衰期是写入时算好的，不会自动重算（后续可做重建工具）。每项旁边的「?」有说明。</div>
+      <div id="scoringGroups"></div>
+    </section>
+
+    <!-- 记忆馆 -->
+    <section class="page" id="page-memory">
+      <div class="memory-hero">
+        <div>
+          <div class="sub">聊天页只保留对话和摄像头；她记得的事、核心事实、工作日志、日记与梦都集中在这里。</div>
+        </div>
+        <div class="inline"><span id="memoryStatus" class="status"></span><button class="secondary" id="memoryRefresh">刷新</button></div>
+      </div>
+      <div class="grid2">
+        <div class="card">
+          <h3>她记得的事</h3>
+          <div class="sub">最近写入的普通记忆；按内容/分类搜索。重要度和半衰期决定她多久会淡忘。</div>
+          <div class="memory-toolbar"><input type="text" id="memorySearch" placeholder="搜索记忆内容或分类…"><span class="pill" id="memoryCount">0 条</span></div>
+          <div class="memory-list" id="memoryList"><div class="memory-empty">加载中…</div></div>
+        </div>
+        <div class="card">
+          <h3>核心事实（pin）</h3>
+          <div class="sub">不会因时间衰减而消失的稳定事实；会进入每轮系统提示词。</div>
+          <div id="memoryFacts" class="memory-list"><div class="memory-empty">加载中…</div></div>
+        </div>
+        <div class="card">
+          <h3>今天的工作日志 <span class="pill">不是她的日记</span></h3>
+          <div class="sub">系统记录的真实活动流水，用于追溯；不参与人格化表达。</div>
+          <div id="memoryWorklog" class="dialogue-text">加载中…</div>
+        </div>
+        <div class="card">
+          <h3>她的日记（人格化）</h3>
+          <div class="sub">她按当天真实活动写的第一人称日记；可以删除今天的一篇。</div>
+          <div id="memoryDiary" class="dialogue-text">加载中…</div>
+          <div class="muted" id="memoryDiaryMeta" style="margin-top:8px"></div>
+          <div class="inline" style="margin-top:10px"><button class="secondary" id="memoryDeleteDiary">删除今天的日记</button></div>
+        </div>
+        <div class="card" style="grid-column:1/-1">
+          <h3>她的梦</h3>
+          <div class="sub">梦只归档，不写成真实记忆，也不参与检索；下次聊天时可自然提起。</div>
+          <div id="memoryDream" class="dialogue-text">加载中…</div>
+          <div class="muted" id="memoryDreamMeta" style="margin-top:8px"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 数据 -->
+    <section class="page" id="page-data">
+      <div class="card">
+        <div class="inline" style="justify-content:space-between">
+          <div><h3 style="margin:0">数据浏览</h3><div class="sub">只读查看；可以直接看记忆、事件、检索日志、日记、内心话、标注等。</div></div>
+          <div class="inline"><input type="text" id="dataSearch" placeholder="搜索内容…" style="width:220px"><button class="secondary" id="dataRefresh">刷新</button><a id="dataExport" href="#" class="small">导出 CSV</a></div>
+        </div>
+        <div class="data-tabs" id="dataTabs"></div>
+        <div class="data-table-wrap"><table id="dataTable"><thead></thead><tbody></tbody></table></div>
+        <div class="hint" id="dataHint"></div>
+      </div>
+    </section>
+
+    <!-- 路径 -->
+    <section class="page" id="page-paths">
+      <div class="card">
+        <h3>文件与目录</h3>
+        <div class="sub">这些路径可以直接在资源管理器打开；数据都在本机。</div>
+        <div class="kv" id="pathsBox"></div>
+      </div>
+      <div class="card">
+        <h3>备份与导入</h3>
+        <div class="sub">导出到 <code>data/exports/</code>（含数据库、人格、记忆、工作日志、媒体、settings.json；settings 含 Key，勿外发）。导入会先自动备份当前数据。</div>
+        <div class="inline" style="margin-top:8px">
+          <button class="secondary" id="export-now">立即导出</button>
+          <button class="brown" id="import-selected">导入选中备份</button>
+          <button class="secondary" id="refresh-exports">刷新列表</button>
+          <span id="backup-status" class="status"></span>
+        </div>
+        <select id="backup-list" style="margin-top:8px"></select>
+        <div class="hint" id="backup-hint">导入会覆盖当前数据库/人格/记忆；出错时可用 pre-import 备份恢复。</div>
+      </div>
+      <div class="card">
+        <h3>哪些东西在哪里改</h3>
+        <div class="kv">
+          <div class="k">API/模型/参数</div><div>本管理台 → 保存到 <code>data/settings.json</code></div>
+          <div class="k">人格/Prompt</div><div>本管理台「人格与 Prompt」→ 数据库 persona_versions</div>
+          <div class="k">记忆/检索权重</div><div>本管理台「记忆参数」→ settings.json 的 scoring 段（覆盖 config/scoring.yaml）</div>
+          <div class="k">人格模板代码</div><div><code>pocketmind/prompts.py</code>（高级；当前 UI 支持补充指令）</div>
+          <div class="k">聊天/标注</div><div><a href="/">/</a> 与 <a href="/review">/review</a></div>
+          <div class="k">原始数据</div><div><code>data/pocketmind.db</code>、<code>data/diary/</code>、<code>data/media/</code></div>
+        </div>
+      </div>
+      <div class="card">
+        <h3>安全与备份</h3>
+        <div class="sub">settings.json 含明文 Key；data/ 已被 gitignore。备份=关服务后复制整个 data/；重置=关服务后删除 data/pocketmind.db（及想清空的 diary/media）。</div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div class="modal" id="data-modal">
+  <div class="box">
+    <div class="inline" style="justify-content:space-between; margin-bottom:8px"><strong>完整数据</strong><button class="secondary" id="close-detail">关闭</button></div>
+    <pre id="data-detail">加载中…</pre>
+  </div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+let S = null;
+const ctx = { rows: [] };
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let currentKind = 'memories';
+// 数据表表头中文名（只影响显示，不改变数据库字段）
+const COLUMN_LABELS = {
+  id:'记录ID', entity_id:'实体ID', conversation_id:'会话ID', turn_id:'轮次ID',
+  memory_id:'记忆ID', event_id:'事件ID', source_event_id:'来源事件ID',
+  at:'时间', created_at:'创建时间', updated_at:'更新时间', occurred_at:'发生时间',
+  name:'名字', age:'年龄', gender:'性别', species:'物种/设定', origin:'来源',
+  role:'角色', content:'内容', model:'模型', mock:'是否Mock', metadata_json:'元数据',
+  who:'说话者', kind:'类型', summary:'摘要', detail:'详情', valence:'情绪效价',
+  severity:'严重度', importance:'重要度', base_score:'基础分', function:'功能',
+  anchor_flag:'是否锚点', pinned:'是否固定', source_quote:'原话', confidence:'置信度',
+  interlocutor_json:'对话者状态', query:'查询', candidates_count:'候选数',
+  selected_count:'选中数', top_selected:'最高选中记忆', candidates_json:'候选明细',
+  selected_json:'选中明细', method:'检索方法', weights_version:'权重版本', gate:'记忆门',
+  embedding_model:'向量模型', layer:'层级', title:'标题', gist:'要点', category:'分类',
+  topic:'主题', half_life_days:'半衰期(天)', distinctiveness:'独特性', density:'密度',
+  status:'状态', retention_stage:'留存阶段', recall_count:'被回忆次数',
+  used_count:'被使用次数', replay_count:'重播次数', last_recalled_at:'最近回忆时间',
+  superseded_by:'被取代记录', field:'变化字段', delta:'变化量', reason:'原因',
+  label:'标签', polarity:'极性', strength_base:'基础强度', strength_current:'当前强度',
+  floor:'下限', date:'日期', caption:'图片描述', path:'路径', mime:'文件类型',
+  size:'文件大小', key:'事实键', value:'事实值', pinned_by:'固定来源', annotator:'标注人',
+  scores_json:'评分JSON', notes:'备注', content:'内容', source_ids_json:'真实活动来源ID',
+  valid_from:'生效时间', valid_to:'失效时间', confidence:'置信度', superseded_by:'被哪条取代',
+  old_id:'旧事实ID', new_id:'新事实ID', old_value:'旧值', new_value:'新值', resolution:'处理结果',
+  core_fact_conflicts:'核心事实冲突',
+  trigger_conditions:'触发条件', steps_json:'步骤JSON', success_count:'成功次数',
+  fail_count:'失败次数', last_used_at:'最近调用', proficiency:'熟练度', source:'来源',
+  version:'版本', trigger_reason:'触发原因', load_count:'整理条数', load_weight:'整理权重',
+  mentioned:'是否已提及', night_run_id:'夜间流水线ID', dream_id:'梦ID',
+  window_start:'整理窗口起', window_end:'整理窗口止', consolidated_count:'整理条数',
+  consolidated_weight:'整理权重', important_count:'重要条数', skill_count:'技能数',
+  skill_maintained:'技能维护数',
+  memory_pool:'记忆池', reality_status:'真实/摘要状态', source_ids_json:'来源ID',
+  consolidation_key:'巩固键', memory_id:'记忆ID',
+  participants:'参与者', event_scores:'事件评分', transient_reward:'临时奖励',
+  trigger_count:'触发次数', from_state:'原状态', to_state:'新状态', retention:'留存值',
+  ok:'是否成功', input_tokens:'输入Token', output_tokens:'输出Token', latency_ms:'耗时(毫秒)',
+  error:'错误', provider:'供应商', purpose:'用途', entity_name:'实体名', created:'创建',
+};
+function colLabel(c) { return COLUMN_LABELS[c] || c; }
+function cellValue(c, v) {
+  if (typeof v === 'object' && v !== null) return JSON.stringify(v);
+  if (['half_life_days'].includes(c) && v !== '' && !isNaN(Number(v))) return Number(v).toFixed(1);
+  if (['importance','valence','base_score','proficiency','confidence'].includes(c) && v !== '' && !isNaN(Number(v))) return Number(v).toFixed(2);
+  return String(v ?? '');
+}
+// 数据浏览只展示每个类型最关键的几列；完整字段在「查看」里看 JSON，避免 20 列横向滚动。
+const COLUMN_PRIORITY = {
+  memories: ['content','category','importance','half_life_days','created_at','status'],
+  events: ['content','valence','severity','importance','base_score','created_at'],
+  messages: ['role','content','created_at'],
+  retrieval_logs: ['query','gate','selected_count','created_at'],
+  dreams: ['content','created_at'],
+  core_facts: ['key','value','created_at'],
+  media: ['caption','mime','size','created_at'],
+  diary: ['date','content'],
+  inner_thoughts: ['content','created_at'],
+  nightly_summaries: ['summary','created_at'],
+  night_runs: ['created_at','triggered_by','consolidated_count'],
+  skills: ['name','trigger_conditions','proficiency','success_count','created_at'],
+};
+function visibleColumns(rows, kind) {
+  if (!rows.length) return [];
+  const available = Object.keys(rows[0]);
+  const preferred = (COLUMN_PRIORITY[kind] || []).filter(c => available.includes(c));
+  return preferred.length ? preferred : available.slice(0, 6);
+}
+
+async function api(path, options) {
+  const res = await fetch(path, Object.assign({headers:{'Content-Type':'application/json'}}, options));
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+function setStatus(el, text, ok) { const n = typeof el === 'string' ? $(el) : el; n.textContent = text; n.className = 'status ' + (ok ? 'ok' : 'err'); }
+function page(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.toggle('active', p.id === 'page-' + name));
+  document.querySelectorAll('.tab').forEach(b => b.classList.toggle('active', b.dataset.page === name));
+  const titles = {overview:['总览',''],memory:['记忆馆','把她记得的事、事实、工作日志、日记和梦集中在这里。'],api:['API 与模型','改这里就能接真实模型；保存后立即热重载。'],persona:['人格与 Prompt','改人格、补充指令，并预览真实系统提示词。'],params:['记忆参数','按大标题分组；每个参数带问号说明。'],data:['数据浏览','查看本机数据库里的全部记录。'],paths:['路径与说明','文件在哪、怎么备份。']};
+  $('pageTitle').textContent = titles[name][0];
+  $('pageSub').textContent = titles[name][1] || '所有设置保存在本机 data/settings.json；保存后立即生效。';
+  if (name === 'memory') loadMemoryPage();
+}
+document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => page(b.dataset.page)));
+
+function fillSelect(el, items, selected) {
+  el.innerHTML = '';
+  for (const it of items) {
+    const opt = document.createElement('option');
+    opt.value = it.value ?? it;
+    opt.textContent = it.label ?? it;
+    el.appendChild(opt);
+  }
+  if (selected) el.value = selected;
+}
+function providerPresets(kind) { return kind === 'llm' ? S.providers : S.embedding_presets; }
+
+function renderApi() {
+  const llmP = Object.entries(S.providers).map(([v,x]) => ({value:v,label:x.label}));
+  const embP = Object.entries(S.embedding_presets).map(([v,x]) => ({value:v,label:x.label}));
+  fillSelect($('llmProvider'), llmP, S.llm.provider);
+  fillSelect($('embProvider'), embP, S.embedding.provider);
+  fillSelect($('llmThinking'), S.thinking_options, S.llm.thinking);
+  $('llmBaseUrl').value = S.llm.base_url || '';
+  $('llmModel').value = S.llm.model || '';
+  $('llmTemperature').value = S.llm.temperature;
+  $('llmMaxTokens').value = S.llm.max_tokens;
+  $('llmApiKey').placeholder = S.llm.api_key_set ? `已保存（${S.llm.api_key_masked}，留空不修改）` : '未设置';
+  $('llmApiKey').value = '';
+  $('llmClearKey').checked = false;
+  $('llmKeyHint').textContent = S.llm.api_key_set ? `来源：${S.llm.api_key_source || '未知'}；留空保存不会覆盖。` : '没有 Key 时走 Mock。';
+  $('embBaseUrl').value = S.embedding.base_url || '';
+  $('embModel').value = S.embedding.model || '';
+  $('embDim').value = S.embedding.dim || 0;
+  $('embApiKey').placeholder = S.embedding.api_key_set ? `已保存（${S.embedding.api_key_masked}，留空不修改）` : '未设置';
+  $('embApiKey').value = '';
+  $('embClearKey').checked = false;
+  $('embKeyHint').textContent = S.embedding.api_key_set ? `来源：${S.embedding.api_key_source || '未知'}。` : '没有 Key 时用关键词兜底。';
+  $('modeBadge').textContent = S.mock ? 'Mock 模式' : '真实 API 模式';
+  $('modeBadge').className = 'badge' + (S.mock ? ' warn' : '');
+}
+function applyProvider(kind, provider) {
+  const preset = providerPresets(kind)[provider];
+  if (!preset) return;
+  if (kind === 'llm') {
+    if (preset.base_url) $('llmBaseUrl').value = preset.base_url;
+    if (preset.model) $('llmModel').value = preset.model;
+    fillModelDatalist('llmModels', preset.models || []);
+  } else {
+    if (preset.base_url) $('embBaseUrl').value = preset.base_url;
+    if (preset.model) $('embModel').value = preset.model;
+    fillModelDatalist('embModels', preset.models || []);
+  }
+}
+function fillModelDatalist(id, models) {
+  const dl = $(id); dl.innerHTML = '';
+  for (const m of models || []) { const o = document.createElement('option'); o.value = m; dl.appendChild(o); }
+}
+async function fetchModels(kind) {
+  const isLlm = kind === 'llm';
+  const provider = isLlm ? $('llmProvider').value : $('embProvider').value;
+  const base_url = isLlm ? $('llmBaseUrl').value : $('embBaseUrl').value;
+  const api_key = isLlm ? $('llmApiKey').value : $('embApiKey').value;
+  setStatus(isLlm ? 'modelHint' : 'modelHint', '拉取中…', true);
+  try {
+    const r = await api('/api/admin/models', {method:'POST', body: JSON.stringify({kind, provider, base_url, api_key})});
+    fillModelDatalist(isLlm ? 'llmModels' : 'embModels', r.models);
+    if (!isLlm ? !$('embModel').value : !$('llmModel').value) {
+      if (r.models && r.models[0]) { if (isLlm) $('llmModel').value = r.models[0]; else $('embModel').value = r.models[0]; }
+    }
+    $('modelHint').textContent = `${r.source === 'live' ? '在线拉取' : '预置候选'}：${(r.models || []).slice(0,6).join('、')}${r.note ? '（' + r.note + '）' : ''}`;
+  } catch (e) { $('modelHint').textContent = '拉取失败：' + e.message; }
+}
+$('llmProvider').addEventListener('change', () => applyProvider('llm', $('llmProvider').value));
+$('embProvider').addEventListener('change', () => applyProvider('embedding', $('embProvider').value));
+$('fetchModels').addEventListener('click', () => fetchModels('llm'));
+$('fetchEmbModels').addEventListener('click', () => fetchModels('embedding'));
+
+function llmPayload() {
+  const p = {
+    provider: $('llmProvider').value, base_url: $('llmBaseUrl').value.trim(),
+    model: $('llmModel').value.trim(), thinking: $('llmThinking').value,
+    temperature: Number($('llmTemperature').value || 0.85), max_tokens: Number($('llmMaxTokens').value || 320),
+  };
+  if ($('llmApiKey').value.trim()) p.api_key = $('llmApiKey').value.trim();
+  if ($('llmClearKey').checked) p.clear_api_key = true;
+  return p;
+}
+function embPayload() {
+  const p = {provider: $('embProvider').value, base_url: $('embBaseUrl').value.trim(), model: $('embModel').value.trim(), dim: Number($('embDim').value || 0)};
+  if ($('embApiKey').value.trim()) p.api_key = $('embApiKey').value.trim();
+  if ($('embClearKey').checked) p.clear_api_key = true;
+  return p;
+}
+async function saveSettings() {
+  setStatus('saveStatus', '保存中…', true);
+  try {
+    const r = await api('/api/admin/settings', {method:'PUT', body: JSON.stringify({llm: llmPayload(), embedding: embPayload(), scoring: collectScoring()})});
+    S = r.settings;
+    renderAll();
+    setStatus('saveStatus', '已保存并热重载 ✓', true);
+  } catch (e) { setStatus('saveStatus', '保存失败：' + e.message, false); }
+}
+$('saveAll').addEventListener('click', saveSettings);
+
+$('testLlm').addEventListener('click', async () => {
+  setStatus('llmTestResult', '测试中…', true);
+  try {
+    const r = await api('/api/admin/test_llm', {method:'POST', body: JSON.stringify(llmPayload())});
+    setStatus('llmTestResult', r.ok ? `✓ ${r.model} / ${r.latency_ms}ms / ${r.preview || ''}` : '✗ ' + r.error, r.ok);
+  } catch (e) { setStatus('llmTestResult', '✗ ' + e.message, false); }
+});
+$('testEmb').addEventListener('click', async () => {
+  setStatus('embTestResult', '测试中…', true);
+  try {
+    const r = await api('/api/admin/test_embedding', {method:'POST', body: JSON.stringify(embPayload())});
+    setStatus('embTestResult', r.ok ? `✓ ${r.model} / dim=${r.dim} / ${r.latency_ms}ms` : '✗ ' + r.error, r.ok);
+  } catch (e) { setStatus('embTestResult', '✗ ' + e.message, false); }
+});
+
+// ---------------- 人格 ----------------
+function renderPersona() {
+  const p = S.persona;
+  $('pName').value = p.name || ''; $('pAge').value = p.age || 0; $('pGender').value = p.gender || '';
+  $('pAgeTracking').checked = !!p.age_tracking;
+  $('pBirthday').value = p.birthday || '';
+  $('pBirthday').disabled = !p.age_tracking;
+  $('pAgeHint').textContent = p.age_tracking
+    ? `当前展示 ${p.effective_age ?? p.age} 岁（基准 ${p.age} 岁；生日 ${p.birthday || '未填'}）`
+    : '关闭时年龄固定；开启需填生日 MM-DD。';
+  $('pSpecies').value = p.species || ''; $('pOrigin').value = p.origin || 'created'; $('pVersion').value = p.version || 1;
+  $('pValues').value = (p.values || []).join('，'); $('pTraits').value = (p.traits || []).join('，');
+  $('pBoundaries').value = (p.boundaries || []).join('，'); $('pOriginStory').value = p.origin_story || '';
+  $('pSpeechStyle').value = JSON.stringify(p.speech_style || {}, null, 2);
+  $('pKnowledge').value = JSON.stringify(p.knowledge_boundary || {}, null, 2);
+  $('pCustom').value = p.custom_instructions || '';
+}
+function listFrom(text) { return text.split(/[，,、;；\n]/).map(s => s.trim()).filter(Boolean); }
+$('pAgeTracking').addEventListener('change', () => {
+  $('pBirthday').disabled = !$('pAgeTracking').checked;
+  $('pAgeHint').textContent = $('pAgeTracking').checked
+    ? '开启后每天按生日推进；首次开启会把当前年龄作为基准。'
+    : '关闭时年龄固定；开启需填生日 MM-DD。';
+});
+$('savePersona').addEventListener('click', async () => {
+  setStatus('personaStatus', '保存中…', true);
+  try {
+    const body = {
+      name: $('pName').value.trim(), age: Number($('pAge').value || 7), gender: $('pGender').value.trim(),
+      age_tracking: $('pAgeTracking').checked, birthday: $('pBirthday').value.trim(),
+      species: $('pSpecies').value.trim(), origin: $('pOrigin').value.trim(), values: listFrom($('pValues').value),
+      traits: listFrom($('pTraits').value), boundaries: listFrom($('pBoundaries').value),
+      origin_story: $('pOriginStory').value, custom_instructions: $('pCustom').value,
+      speech_style: $('pSpeechStyle').value, knowledge_boundary: $('pKnowledge').value,
+      new_entity: $('pNewEntity').checked,
+    };
+    const r = await api('/api/admin/persona', {method:'PUT', body: JSON.stringify(body)});
+    S = await api('/api/admin/settings');
+    renderPersona(); renderOverview();
+    setStatus('personaStatus', r.new_entity ? '已新建角色（隔离）✓' : '已保存为新版本 ✓', true);
+    refreshPrompt();
+  } catch (e) { setStatus('personaStatus', '保存失败：' + e.message, false); }
+});
+async function refreshPrompt() {
+  try {
+    const r = await api('/api/admin/prompt');
+    $('promptTemplate').value = r.template || '';
+    $('promptPreview').textContent = r.prompt;
+    $('placeholderHelp').innerHTML = '可用占位符：' + Object.entries(r.placeholders || {}).map(([k, v]) => `<code>{{${esc(k)}}}</code> ${esc(v)}`).join('　');
+  } catch (e) { $('promptPreview').textContent = '加载失败：' + e.message; }
+}
+$('refreshPrompt').addEventListener('click', refreshPrompt);
+$('savePrompt').addEventListener('click', async () => {
+  setStatus('promptStatus', '保存中…', true);
+  try {
+    const r = await api('/api/admin/prompt', {method:'PUT', body: JSON.stringify({template: $('promptTemplate').value})});
+    $('promptPreview').textContent = r.prompt;
+    setStatus('promptStatus', '已保存，下一轮生效 ✓', true);
+  } catch (e) { setStatus('promptStatus', '保存失败：' + e.message, false); }
+});
+$('resetPrompt').addEventListener('click', async () => {
+  if (!confirm('恢复默认 Prompt 模板？当前模板会被覆盖。')) return;
+  setStatus('promptStatus', '恢复中…', true);
+  try {
+    const r = await api('/api/admin/prompt', {method:'PUT', body: JSON.stringify({reset: true})});
+    $('promptTemplate').value = r.template || '';
+    $('promptPreview').textContent = r.prompt;
+    setStatus('promptStatus', '已恢复默认 ✓', true);
+  } catch (e) { setStatus('promptStatus', '恢复失败：' + e.message, false); }
+});
+
+// ---------------- 参数 ----------------
+function renderScoring() {
+  const box = $('scoringGroups'); box.innerHTML = '';
+  for (const g of S.scoring_groups) {
+    const card = document.createElement('div'); card.className = 'card';
+    card.innerHTML = `<h3>${esc(g.title)}</h3><div class="sub">${esc(g.desc)}</div><div class="grid2">` +
+      g.fields.map(f => {
+        const val = S.scoring[f.name];
+        let input;
+        if (f.type === 'json') input = `<textarea data-score="${esc(f.name)}" data-type="json">${esc(JSON.stringify(val, null, 2))}</textarea>`;
+        else if (f.type === 'list') input = `<textarea data-score="${esc(f.name)}" data-type="list">${esc((val || []).join('，'))}</textarea>`;
+        else input = `<input type="number" data-score="${esc(f.name)}" data-type="${f.type}" value="${esc(val)}" min="${f.min ?? ''}" max="${f.max ?? ''}" step="${f.step ?? 1}">`;
+        return `<div><label class="f">${esc(f.label)} <span class="q" data-tip="${esc(f.desc)}">?</span></label>${input}</div>`;
+      }).join('') + '</div>';
+    box.appendChild(card);
+  }
+}
+function collectScoring() {
+  const out = {};
+  document.querySelectorAll('[data-score]').forEach(el => {
+    const name = el.dataset.score, type = el.dataset.type;
+    try {
+      if (type === 'json') out[name] = JSON.parse(el.value);
+      else if (type === 'list') out[name] = el.value.split(/[，,、;；\n]/).map(s => s.trim()).filter(Boolean);
+      else if (type === 'int') out[name] = parseInt(el.value, 10);
+      else out[name] = parseFloat(el.value);
+    } catch (e) { throw new Error(`${name} 格式不对：${e.message}`); }
+  });
+  return out;
+}
+
+// ---------------- 记忆馆 ----------------
+let memoryState = null;
+let memoryQuery = '';
+function renderMemoryList() {
+  if (!memoryState) return;
+  const q = memoryQuery.trim().toLowerCase();
+  const list = (memoryState.memories || []).filter(m => !q || String(m.content || '').toLowerCase().includes(q) || String(m.category || '').toLowerCase().includes(q));
+  $('memoryCount').textContent = `${list.length} 条`;
+  $('memoryList').innerHTML = list.length ? list.map(m => `<div class="memory-item">
+      <div class="memory-content">${esc(m.content)}</div>
+      <div class="memory-meta"><span class="pill">${esc(m.category)}</span><span>重要 ${Number(m.importance).toFixed(2)}</span><span>半衰期 ${Math.round(m.half_life_days)} 天</span><span>${esc((m.created_at || '').slice(0, 16).replace('T', ' '))}</span></div>
+    </div>`).join('') : '<div class="memory-empty">没有匹配的记忆。</div>';
+  const facts = memoryState.core_facts || [];
+  $('memoryFacts').innerHTML = facts.length ? facts.map(f => `<div class="memory-item"><div class="memory-content"><strong>${esc(f.key)}</strong>：${esc(f.value)}</div><div class="memory-meta"><span class="pill">pin</span></div></div>`).join('') : '<div class="memory-empty">暂无核心事实。</div>';
+}
+async function loadMemoryPage() {
+  $('memoryStatus').textContent = '加载中…';
+  try {
+    const [state, diary] = await Promise.all([api('/api/state'), api('/api/diary')]);
+    memoryState = state;
+    renderMemoryList();
+    $('memoryWorklog').textContent = diary.today || '今天还没有工作日志。';
+    $('memoryDiary').textContent = diary.persona_today || '今天还没有写人格化日记。';
+    const meta = diary.persona_meta || {};
+    $('memoryDiaryMeta').textContent = meta.source_count ? `依据 ${meta.source_count} 条真实活动 · ${meta.model || ''}` : '还没有可追溯的活动来源。';
+    const dream = state.dream_latest;
+    $('memoryDream').textContent = dream ? (dream.content || '') : '还没有梦。';
+    $('memoryDreamMeta').textContent = dream ? `${(dream.created_at || '').slice(0, 16).replace('T',' ')} · 来自 ${(dream.source_ids || []).length} 条近期记忆${dream.residue ? ' · ' + dream.residue : ''}` : '梦只归档，不写成真实记忆。';
+    $('memoryStatus').textContent = '';
+  } catch (e) { $('memoryStatus').textContent = '加载失败：' + e.message; }
+}
+$('memorySearch').addEventListener('input', (e) => { memoryQuery = e.target.value; renderMemoryList(); });
+$('memoryRefresh').addEventListener('click', loadMemoryPage);
+$('memoryDeleteDiary').addEventListener('click', async () => {
+  if (!confirm('删除今天的“她的日记”？工作日志和记忆不会被删除。')) return;
+  try {
+    const r = await api('/api/diary/delete', {method:'POST', body: JSON.stringify({})});
+    if (!r.ok) throw new Error(r.error || '删除失败');
+    $('memoryDiary').textContent = '今天还没有写人格化日记。';
+    $('memoryDiaryMeta').textContent = '还没有可追溯的活动来源。';
+    $('memoryStatus').textContent = '今天的日记已删除';
+  } catch (e) { $('memoryStatus').textContent = '删除失败：' + e.message; }
+});
+
+// ---------------- 数据 ----------------
+let dataSources = [];
+function renderDataTabs() {
+  dataSources = S.data_sources || [];
+  $('dataTabs').innerHTML = dataSources.map(d => `<button data-kind="${esc(d.kind)}" title="${esc(d.desc)}">${esc(d.label)}</button>`).join('');
+  document.querySelectorAll('#dataTabs button').forEach(b => b.addEventListener('click', () => { currentKind = b.dataset.kind; loadData(); }));
+}
+async function loadData() {
+  document.querySelectorAll('#dataTabs button').forEach(b => b.classList.toggle('active', b.dataset.kind === currentKind));
+  const q = $('dataSearch').value.trim();
+  $('dataHint').textContent = '加载中…';
+  try {
+    const r = await api(`/api/admin/data?kind=${encodeURIComponent(currentKind)}&q=${encodeURIComponent(q)}&limit=100`);
+    const rows = r.rows || [];
+    $('dataExport').href = `/api/admin/export?kind=${encodeURIComponent(currentKind)}&q=${encodeURIComponent(q)}`;
+    const thead = $('dataTable').querySelector('thead'); const tbody = $('dataTable').querySelector('tbody');
+    if (!rows.length) { thead.innerHTML = ''; tbody.innerHTML = '<tr><td>没有数据。</td></tr>'; $('dataHint').textContent = '没有数据。'; return; }
+    const cols = visibleColumns(rows, currentKind);
+    thead.innerHTML = '<tr>' + cols.map(c => `<th title="${esc(c)}">${esc(colLabel(c))}</th>`).join('') + '<th></th></tr>';
+    ctx.rows = rows;
+    tbody.innerHTML = rows.map((row, idx) => '<tr data-row="' + idx + '">' + cols.map(c => {
+      const text = cellValue(c, row[c]);
+      const short = text.length > 240 ? text.slice(0, 240) + '…' : text;
+      const cls = ['content','caption','query','value','summary'].includes(c) ? 'cell-content' : 'cell-small';
+      return `<td class="${cls}" title="${esc(text.slice(0, 600))}">${esc(short)}</td>`;
+    }).join('') + `<td><button class="secondary" data-detail="${idx}" style="padding:4px 8px;font-size:11px">查看</button></td></tr>`).join('');
+    tbody.querySelectorAll('tr[data-row]').forEach(tr => tr.addEventListener('click', (e) => {
+      if (e.target.closest('[data-detail]')) return;
+      showDetail(ctx.rows[Number(tr.dataset.row)].id || '');
+    }));
+    tbody.querySelectorAll('[data-detail]').forEach(btn => btn.addEventListener('click', () => {
+      const row = ctx.rows[Number(btn.dataset.detail)];
+      showDetail(row.id || '');
+    }));
+    $('dataHint').textContent = `共显示 ${rows.length} 条；只展示关键列，点任意行或「查看」看完整 JSON。${currentKind === 'inner_thoughts' ? '（内心话仅开发者查看，不展示给用户）' : ''}`;
+  } catch (e) { $('dataHint').textContent = '加载失败：' + e.message; }
+}
+$('dataRefresh').addEventListener('click', loadData);
+$('dataSearch').addEventListener('keydown', e => { if (e.key === 'Enter') loadData(); });
+$('close-detail').addEventListener('click', () => $('data-modal').classList.remove('show'));
+async function showDetail(id) {
+  if (!id) return;
+  $('data-detail').textContent = '加载中…';
+  $('data-modal').classList.add('show');
+  try {
+    const r = await api(`/api/admin/data_detail?kind=${encodeURIComponent(currentKind)}&id=${encodeURIComponent(id)}`);
+    $('data-detail').textContent = JSON.stringify(r.row, null, 2);
+  } catch (e) { $('data-detail').textContent = '加载失败：' + e.message; }
+}
+
+// ---------------- 总览/路径 ----------------
+function renderOverview() {
+  const p = S.persona;
+  $('overviewPersona').innerHTML = `<div class="k">名字</div><div>${esc(p.name)} · ${esc(p.effective_age ?? p.age)} 岁 · ${esc(p.gender)}</div>
+    <div class="k">物种/设定</div><div>${esc(p.species)}</div>
+    <div class="k">来源</div><div>${esc(p.origin)}（被创造）</div>
+    <div class="k">性格</div><div>${esc((p.traits || []).join('、'))}</div>
+    <div class="k">补充指令</div><div>${esc(p.custom_instructions || '（无）')}</div>`;
+  $('overviewState').innerHTML = `<div class="k">模式</div><div>${S.mock ? 'Mock（离线）' : '真实 API'}</div>
+    <div class="k">主模型</div><div>${esc(S.llm.model)} @ ${esc(S.llm.base_url)}</div>
+    <div class="k">思考</div><div>${esc(S.llm.thinking)}</div>
+    <div class="k">Embedding</div><div>${esc(S.embedding.model)} ${S.embedding.api_key_set ? '' : '（未配 Key，关键词兜底）'}</div>`;
+  $('overviewStats').innerHTML = '<div class="k">正在读取…</div><div></div>';
+  api('/api/admin/data?kind=stats').then(r => {
+    const st = r.stats || {};
+    $('overviewStats').innerHTML = Object.entries(st).map(([k,v]) => `<div class="k">${esc(k)}</div><div>${esc(v)}</div>`).join('');
+  }).catch(() => {});
+  const paths = S.paths || {};
+  $('pathsBox').innerHTML = Object.entries(paths).map(([k,v]) => `<div class="k">${esc(k)}</div><div><code>${esc(v)}</code></div>`).join('');
+  const sec = S.security || {};
+  const ks = sec.key_storage || {};
+  const rel = sec.release || {};
+  const cs = sec.code_signing || {};
+  const verify = rel.verified === 'ok' ? '一致' : (rel.verified === 'mismatch' ? '不一致' : '未验证');
+  $('securityBox').innerHTML = `
+    <div class="k">API Key 存储</div><div>${ks.available ? esc(ks.backend) : '不可用'} · ${ks.llm_key_present ? '主模型 Key 已加密' : '主模型 Key 未配置'} · ${ks.embedding_key_present ? 'Embedding Key 已加密' : 'Embedding Key 未配置'}</div>
+    <div class="k">加密目录</div><div><code>${esc(ks.directory || '')}</code></div>
+    <div class="k">加密状态</div><div>${ks.error ? '<span class="err">' + esc(ks.error) + '</span>' : (ks.available ? '正常（AES-256-GCM + Windows DPAPI）' : '未启用')}</div>
+    <div class="k">代码签名</div><div>${esc(cs.status || 'unsigned')} · ${esc(cs.detail || '未做代码签名')}</div>
+    <div class="k">源码哈希</div><div><code title="${esc(rel.source_hash || '')}">${esc((rel.source_hash || '未构建清单').slice(0, 38))}</code></div>
+    <div class="k">构建校验</div><div>${esc(verify)} · ${esc(rel.detail || '')}</div>
+    <div class="k">Git</div><div>${esc((rel.git_commit || '').slice(0, 12) || '未知')}${rel.git_dirty ? ' · dirty' : ''}</div>`;
+}
+function renderAll() {
+  renderApi(); renderPersona(); renderScoring(); renderOverview(); renderDataTabs(); loadData(); refreshPrompt(); loadExports();
+}
+async function loadExports() {
+  try {
+    const r = await api('/api/exports');
+    const list = r.exports || [];
+    $('backup-list').innerHTML = list.length ? list.map(x => `<option value="${esc(x.name)}">${esc(x.name)} · ${esc(x.created_at || '')} · 记忆 ${x.counts?.memories ?? '?'}</option>`).join('') : '<option value="">（暂无备份）</option>';
+  } catch (e) { $('backup-hint').textContent = '备份列表加载失败：' + e.message; }
+}
+$('export-now').addEventListener('click', async () => {
+  setStatus('backup-status', '导出中…', true);
+  try { const r = await api('/api/export', {method:'POST', body:'{}'}); setStatus('backup-status', '已导出：' + r.name, true); await loadExports(); }
+  catch (e) { setStatus('backup-status', '导出失败：' + e.message, false); }
+});
+$('refresh-exports').addEventListener('click', loadExports);
+$('import-selected').addEventListener('click', async () => {
+  const name = $('backup-list').value;
+  if (!name) return;
+  if (!confirm(`确认导入 ${name}？当前数据库/记忆会被覆盖（会先自动备份）。`)) return;
+  setStatus('backup-status', '导入中…', true);
+  try { const r = await api('/api/import', {method:'POST', body: JSON.stringify({name})}); setStatus('backup-status', '导入成功：' + (r.memories ?? '?') + ' 条记忆', true); await boot(); }
+  catch (e) { setStatus('backup-status', '导入失败：' + e.message, false); }
+});
+
+async function boot() {
+  try {
+    S = await api('/api/admin/settings');
+    renderAll();
+    const hashPage = (location.hash || '').replace('#', '');
+    const valid = ['overview','memory','api','persona','params','data','paths'];
+    page(valid.includes(hashPage) ? hashPage : 'overview');
+  } catch (e) {
+    document.body.insertAdjacentHTML('afterbegin', `<div class="warnbox" style="margin:20px">管理台加载失败：${esc(e.message)}</div>`);
+  }
+}
+boot();
+</script>
+</body>
+</html>

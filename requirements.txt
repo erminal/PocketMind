@@ -1,0 +1,52 @@
+# PocketMind · M1 环境依赖清单（Python 3.12，全部 API 模式）
+# ---------------------------------------------------------------
+# 说明：
+#   1. 本文件只列 M1 需要的「顶层依赖」，版本为 2026-10-24 在项目内 .venv 实际验证通过的版本。
+#   2. 不包含 torch / transformers / 本地模型权重：M1 只走云端 API 模式。
+#   3. 安装方式（在项目根目录执行，venv 与缓存都留在项目内）：
+#        $env:UV_CACHE_DIR = "D:\DSH\WORK\code-projects\PocketMind\.uv-cache"
+#        uv venv .venv --python 3.12
+#        uv pip install --python .\.venv\Scripts\python.exe -r requirements.txt
+#   4. 本 venv 由 uv 管理、未预装 pip；请统一用 `uv pip` 操作，不要 `python -m pip`。
+
+# ---- HTTP / LLM ----
+openai==3.37.0
+httpx==0.28.1
+tenacity==9.2.1
+
+# ---- 数据 / 校验 ----
+pydantic==2.14.1
+pydantic-settings==2.16.1
+python-dotenv==1.2.4
+orjson==3.13.0
+jsonschema==4.26.0
+pyyaml==6.0.3
+
+# ---- 安全：API Key 加密（AES-256-GCM；主密钥由 Windows DPAPI 保护）----
+cryptography==46.0.3
+
+# ---- 计算 ----
+numpy==2.5.4
+
+# ---- CLI / 终端展示 ----
+typer==0.27.3
+rich==15.0.0
+
+# ---- Web（M1 本地实验台）----
+fastapi==0.162.0
+uvicorn[standard]==0.54.0
+jinja2==3.1.6
+python-multipart==0.0.32
+websockets==17.3
+
+# ---- 文本 / 图片 ----
+jieba==0.42.1
+Pillow==13.0.0
+tiktoken==0.14.0
+
+# ---- 测试 / 质量 ----
+pytest==9.1.1
+pytest-asyncio==1.4.0
+pytest-cov==7.1.0
+ruff==0.17.2
+mypy==2.4.0

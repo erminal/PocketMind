@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PocketMind · 人工标注</title>
+  <style>
+    body { margin:0; font-family:"PingFang SC","Microsoft YaHei",system-ui,sans-serif; background:#f7f4ee; color:#2d2a24; }
+    .wrap { max-width: 980px; margin: 0 auto; padding: 22px; }
+    a { color:#6b8e6a; }
+    h1 { font-size:20px; margin:0 0 4px; }
+    .muted { color:#8a8175; font-size:12px; }
+    .card { background:#fffdf8; border:1px solid #e7e0d3; border-radius:14px; padding:14px 16px; margin-top:14px; }
+    .turn { display:grid; grid-template-columns: 1fr 200px; gap:14px; }
+    .bubble { padding:8px 10px; border-radius:10px; margin:6px 0; font-size:13px; line-height:1.6; white-space:pre-wrap; }
+    .bubble.user { background:#e8f0e6; }
+    .bubble.assistant { background:#fbf8f1; border:1px solid #eee6d8; }
+    .meta { font-size:11px; color:#8a8175; margin-top:4px; }
+    label { font-size:12px; color:#5d574d; display:block; margin-top:8px; }
+    select, textarea, input { width:100%; box-sizing:border-box; padding:6px 8px; border:1px solid #e0d7c6; border-radius:8px; font-size:12px; background:#fff; }
+    button { margin-top:10px; padding:8px 14px; border:0; border-radius:9px; background:#6b8e6a; color:#fff; cursor:pointer; font-size:12px; }
+    button:disabled { opacity:.5; }
+    .navbtn { margin:0; padding:7px 12px; border-radius:9px; border:1px solid #dce5d8; background:#eef3ea; color:#3d5c3b; cursor:pointer; font-size:12px; }
+    .navbtn:hover { background:#e2ecdd; }
+    .done { color:#6b8e6a; font-size:12px; margin-top:8px; }
+    .top { display:flex; justify-content:space-between; align-items:center; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div><h1>人工标注台</h1><div class="muted">看「用户话 + 她的回复」打分；分数与备注会写进本地 annotations 表，可导出。</div></div>
+    <button type="button" class="navbtn" onclick="location.href='/'">← 回到聊天</button>
+  </div>
+  <div id="list" class="muted" style="margin-top:16px">加载中…</div>
+</div>
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => (s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fields = [
+  ['naturalness','自然度'], ['memory_accuracy','记忆准确性'], ['age','年龄感'],
+  ['continuity','连续性'], ['overall','总体人感']
+];
+async function api(path, options) {
+  const res = await fetch(path, Object.assign({headers:{'Content-Type':'application/json'}}, options));
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+function scoreSelect(name) {
+  let opts = '';
+  for (let i = 1; i <= 5; i++) opts += `<option value="${i}" ${i===3?'selected':''}>${i}</option>`;
+  return `<select id="s_${name}">${opts}</select>`;
+}
+async function load() {
+  const [{turns}, {annotations}] = await Promise.all([api('/api/turns?limit=30'), api('/api/annotations?limit=50')]);
+  if (!turns.length) { $('list').textContent = '还没有可标注的对话。先去聊几句。'; return; }
+  $('list').innerHTML = turns.map(t => `
+    <div class="card" data-turn="${esc(t.turn_id)}" data-conv="${esc(t.conversation_id)}">
+      <div class="turn">
+        <div>
+          <div class="bubble user">${esc(t.user_text)}</div>
+          <div class="bubble assistant">${esc(t.assistant_text)}</div>
+          <div class="meta">turn ${esc(t.turn_id)} · ${esc(t.at)} ${t.annotated ? '· 已标注 ' + t.annotated + ' 次' : ''}</div>
+        </div>
+        <div>
+          ${fields.map(([n, label]) => `<label>${label}${scoreSelect(n)}</label>`).join('')}
+          <label>备注<textarea id="notes" rows="2" placeholder="例如：这句不像七岁"></textarea></label>
+          <button class="save">保存评分</button>
+          <div class="done"></div>
+        </div>
+      </div>
+    </div>`).join('');
+  document.querySelectorAll('.card').forEach(card => {
+    card.querySelector('.save').addEventListener('click', async () => {
+      const turn = card.dataset.turn, conv = card.dataset.conv;
+      const scores = {};
+      fields.forEach(([n]) => scores[n] = Number(card.querySelector('#s_' + n).value));
+      const notes = card.querySelector('#notes').value;
+      const btn = card.querySelector('.save');
+      btn.disabled = true;
+      try {
+        await api('/api/annotations', {method:'POST', body: JSON.stringify({conversation_id: conv, turn_id: turn, scores, notes})});
+        card.querySelector('.done').textContent = '已保存 ✓';
+      } catch (e) { card.querySelector('.done').textContent = '失败：' + e.message; }
+      btn.disabled = false;
+    });
+  });
+  const existing = annotations.slice(0, 20).map(a => `<div class="meta">${esc(a.turn_id)} · ${esc(a.scores_json)} · ${esc(a.notes)}</div>`).join('');
+  if (existing) {
+    const box = document.createElement('div');
+    box.className = 'card';
+    box.innerHTML = '<div class="muted">最近标注</div>' + existing;
+    $('list').appendChild(box);
+  }
+}
+load().catch(e => { $('list').textContent = '加载失败：' + e.message; });
+</script>
+</body>
+</html>

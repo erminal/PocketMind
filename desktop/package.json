@@ -1,0 +1,16 @@
+{
+  "name": "pocketmind-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "PocketMind local desktop shell (Electron + existing Python backend)",
+  "main": "main.js",
+  "author": "PocketMind",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "start:local": "node scripts/run-local-electron.js"
+  },
+  "devDependencies": {
+    "electron": "^45.0.0"
+  }
+}

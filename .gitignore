@@ -1,0 +1,51 @@
+# 本地数据 / 隐私：绝不提交
+data/
+secrets/
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+*.log
+logs/
+media/
+diary/
+exports/
+backups/
+.env
+.env.*
+!.env.example
+
+# Python / 依赖 / 构建
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.benchmarks/
+.plastic/
+node_modules/
+dist/
+build/
+.uv-cache/
+jieba.cache
+
+# 测试临时目录
+tmp*/
+pm-secret-test-*/
+pytest-of-*/
+
+# 安装包：本地保留，但 GitHub 仓库不追踪（改用 Releases）
+installer/PocketMindDesktop/
+installer/*.zip
+installer/*.7z*
+
+# 系统 / 编辑器
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/
+*.swp
