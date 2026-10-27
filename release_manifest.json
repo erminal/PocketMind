@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-28T00:11:47+08:00",
-  "git_commit": "e2e91b4743e0e860343084c5726072d9582b2525",
+  "generated_at": "2026-10-28T00:14:46+08:00",
+  "git_commit": "3fbd0661b22defc9908046f4825f4c22b8462151",
   "git_dirty": false,
-  "source_hash": "sha256:e9f81b1227ee7d5a8dbcb6b45c7a5fbb006b6e6a0ca7890795d21f608a155f77",
+  "source_hash": "sha256:b31f7002b0d26304b151179c99fc164af6525ed68ef937a969190478a998386e",
   "artifacts": {
     "backend_exe": {
       "name": "PocketMind.exe",
