@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-10-27T22:48:53+08:00",
+  "git_commit": "8c477d1c5e8cd3a543ee45745d0f45574491e772",
+  "git_dirty": false,
+  "source_hash": "sha256:baac895936d93deec2e5aa466cb0906c5861011eae92d38bfb32bb5254999a20",
+  "artifacts": {
+    "backend_exe": {
+      "name": "PocketMind.exe",
+      "sha256": "827c113c806235d043609e9fdc08b30ccc9d5442c20587e3b2f0353c9c27af5d",
+      "size": 20402805
+    },
+    "desktop_exe": {
+      "name": "PocketMind.exe",
+      "sha256": "31a0176b7c1a81cf379e55e109c57a56493a4d4a9e9b0d2475a678fd7df234dc",
+      "size": 225441792
+    },
+    "desktop_main": {
+      "name": "main.js",
+      "sha256": "a75101e193f8434e84de30896d797d613f33dbb2fa7f8571be9144880debb113",
+      "size": 14487
+    },
+    "desktop_loading": {
+      "name": "loading.html",
+      "sha256": "85f1b56d2d57f2737ad669dfdb0b9f186ae63af66910dc82545897d0fedcb4a7",
+      "size": 1725
+    }
+  },
+  "code_signing": {
+    "status": "unsigned",
+    "detail": "当前没有代码签名证书；这是完整性清单，不是可信签名。"
+  }
+}
